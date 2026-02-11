@@ -466,7 +466,8 @@
       }
     });
 
-    const clipboardPrompt = `Convert my questions into the exact HTML format below.
+    <script>
+const clipboardPrompt = `Convert my questions into the exact HTML format below.
 
 Rules
 - Output ONLY HTML
@@ -485,27 +486,21 @@ Format
     <li>Option 3</li>
   </ul>
 </article>`;
+</script>
 
-    document.getElementById("copyPromptBtn").addEventListener("click", async () => {
-      try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(clipboardPrompt);
-        } else {
-          const temp = document.createElement("textarea");
-          temp.value = clipboardPrompt;
-          document.body.appendChild(temp);
-          temp.select();
-          document.execCommand("copy");
-          temp.remove();
-        }
-        setStatus("Prompt copied to clipboard.");
-      } catch (err) {
-        setStatus("Could not copy prompt. Copy manually from code.", true);
-      }
-    });
+<pre id="promptPreview"></pre>
 
-    initOrder();
-    render();
-  </script>
-</body>
-</html>
+<button id="selectBtn" type="button">Select text for manual Ctrl+C</button>
+
+<script>
+  const preview = document.getElementById("promptPreview");
+  preview.textContent = clipboardPrompt;
+
+  document.getElementById("selectBtn").addEventListener("click", () => {
+    const range = document.createRange();
+    range.selectNodeContents(preview);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  });
+</script>
