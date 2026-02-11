@@ -56,6 +56,7 @@
     .setting.column{align-items:flex-start; flex-direction:column; gap:6px;}
     .setting.column span{font-weight:600;}
     .setting.column input[type="color"]{width:56px; height:32px; border:1px solid var(--border); border-radius:8px; padding:2px; background:var(--surface);}
+    .setting.column input[type="text"]{width:min(520px,100%); border:1px solid var(--border); border-radius:8px; padding:8px 10px; background:var(--surface); color:var(--text); box-sizing:border-box;}
     .settings-panel textarea{width:100%; min-height:150px; resize:vertical; border:1px solid var(--border); border-radius:10px; padding:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:12px; box-sizing:border-box;}
     .settings-actions{display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;}
     #clipboardPromptPreview{display:none; min-height:120px; margin-top:8px;}
@@ -66,10 +67,10 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Diuretics Med Chem — Interactive Quiz</h1>
+    <h1 id="quizTitle">Diuretics Med Chem — Interactive Quiz</h1>
     <p class="sub">
       This is a foramt for future pratice questions<br>
-      <span class="small">Instant feedback • White background • Click an option to answer.</span>
+      <span id="instantFeedbackHint" class="small">Instant feedback • White background • Click an option to answer.</span>
     </p>
 
     <div class="toolbar">
@@ -102,7 +103,34 @@
         <input id="shuffleOptionsToggle" type="checkbox" />
         Swap/shuffle answer options for each question
       </label>
+      <label class="setting column">
+        <span>Quiz title</span>
+        <input id="titleInput" type="text" value="Diuretics Med Chem — Interactive Quiz" />
+      </label>
+      <label class="setting">
+        <input id="instantFeedbackToggle" type="checkbox" checked />
+        Show “Instant Feedback” label
+      </label>
 
+      <p class="settings-title" style="margin-top:12px;">Colour Theme</p>
+      <label class="setting column">
+        <span>Page background</span>
+        <input id="bgColorInput" type="color" value="#ffffff" />
+      </label>
+      <label class="setting column">
+        <span>Cards + controls tint</span>
+        <input id="surfaceTintInput" type="color" value="#fafafa" />
+      </label>
+      <div class="settings-actions">
+        <button id="resetColorsBtn" type="button">Reset Colours</button>
+      </div>
+
+      <div class="settings-actions" style="margin-top:12px;">
+        <button id="toggleHtmlSectionBtn" type="button" aria-expanded="true" aria-controls="loadQuestionsSection">Hide Load Questions from HTML</button>
+      </div>
+      <div id="loadQuestionsSection">
+        <p class="settings-title" style="margin-top:12px;">Load Questions from HTML</p>
+        <textarea id="questionsHtmlInput" placeholder="Paste HTML using this format:
       <p class="settings-title" style="margin-top:12px;">Colour Theme</p>
       <label class="setting column">
         <span>Page background</span>
@@ -126,12 +154,13 @@
     <li>Option C</li>
   </ul>
 </article>"></textarea>
-      <div class="settings-actions">
-        <button id="loadQuestionsHtmlBtn" type="button">Load HTML Questions</button>
-        <button id="copyPromptBtn" type="button">Input prompt in chat</button>
-        <span id="htmlLoadStatus" class="small"></span>
+        <div class="settings-actions">
+          <button id="loadQuestionsHtmlBtn" type="button">Load HTML Questions</button>
+          <button id="copyPromptBtn" type="button">Input prompt in chat</button>
+          <span id="htmlLoadStatus" class="small"></span>
+        </div>
+        <textarea id="clipboardPromptPreview" readonly aria-label="Clipboard prompt manual copy text"></textarea>
       </div>
-      <textarea id="clipboardPromptPreview" readonly aria-label="Clipboard prompt manual copy text"></textarea>
     </div>
 
     <div id="quiz"></div>
@@ -160,7 +189,9 @@
         showExplanations: true,
         shuffleOnReset: false,
         compactMode: false,
-        shuffleOptions: false
+        shuffleOptions: false,
+        titleText: "Diuretics Med Chem — Interactive Quiz",
+        instantFeedbackEnabled: true
       }
     };
 
@@ -438,6 +469,18 @@
         .replaceAll("'", "&#039;");
     }
 
+
+    function updateQuizTitle() {
+      const baseTitle = clampText(state.settings.titleText || "Quiz", 120);
+      const withSuffix = state.settings.instantFeedbackEnabled
+        ? `${baseTitle} (Instant Feedback)`
+        : baseTitle;
+
+      document.getElementById("quizTitle").textContent = withSuffix;
+      document.title = withSuffix;
+      document.getElementById("instantFeedbackHint").style.display = state.settings.instantFeedbackEnabled ? "inline" : "none";
+    }
+
     function loadQuestionsFromHtml(html) {
       if (typeof html !== "string") {
         throw new Error("HTML input must be text.");
@@ -523,6 +566,26 @@
       render();
     });
 
+    const titleInput = document.getElementById("titleInput");
+    titleInput.addEventListener("input", (event) => {
+      state.settings.titleText = event.target.value;
+      updateQuizTitle();
+    });
+
+    document.getElementById("instantFeedbackToggle").addEventListener("change", (event) => {
+      state.settings.instantFeedbackEnabled = event.target.checked;
+      updateQuizTitle();
+    });
+
+    const toggleHtmlSectionBtn = document.getElementById("toggleHtmlSectionBtn");
+    const loadQuestionsSection = document.getElementById("loadQuestionsSection");
+    toggleHtmlSectionBtn.addEventListener("click", () => {
+      const isHidden = loadQuestionsSection.style.display === "none";
+      loadQuestionsSection.style.display = isHidden ? "block" : "none";
+      toggleHtmlSectionBtn.textContent = isHidden ? "Hide Load Questions from HTML" : "Show Load Questions from HTML";
+      toggleHtmlSectionBtn.setAttribute("aria-expanded", String(isHidden));
+    });
+
     const bgColorInput = document.getElementById("bgColorInput");
     const surfaceTintInput = document.getElementById("surfaceTintInput");
     bgColorInput.addEventListener("input", () => {
@@ -601,6 +664,7 @@ Format
     });
 
     initOrder();
+    updateQuizTitle();
     applyThemeColors(DEFAULT_THEME);
     render();
   </script>
