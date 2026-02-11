@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Diuretics Med Chem — Interactive Quiz (Instant Feedback)</title>
+  <style>
+    :root { --bg:#fff; --text:#111; --muted:#666; --border:#ddd; --ok:#0a7a2f; --bad:#b00020; }
+    html,body{background:var(--bg); color:var(--text); margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;}
+    .wrap{max-width:980px; margin:28px auto; padding:0 16px 40px;}
+    h1{font-size:22px; margin:0 0 8px;}
+    .sub{color:var(--muted); margin:0 0 18px; line-height:1.4;}
+    .toolbar{display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:12px; border:1px solid var(--border); border-radius:12px; margin:16px 0 18px;}
+    .toolbar > *{margin:0;}
+    button{cursor:pointer; border:1px solid var(--border); background:#f7f7f7; padding:10px 12px; border-radius:10px; font-weight:600;}
+    button:hover{background:#efefef;}
+    .pill{padding:8px 10px; border:1px solid var(--border); border-radius:999px; background:#fafafa; font-size:13px;}
+    .q{border:1px solid var(--border); border-radius:14px; padding:14px 14px 10px; margin:12px 0; background:#fff;}
+    .qhead{display:flex; gap:10px; align-items:flex-start; justify-content:space-between;}
+    .qtitle{font-weight:800; font-size:14px; margin:0;}
+    .tag{font-size:12px; color:var(--muted); border:1px solid var(--border); padding:4px 8px; border-radius:999px; white-space:nowrap;}
+    .prompt{margin:10px 0 12px; line-height:1.4;}
+    .opts{display:grid; gap:8px; margin:0 0 10px;}
+    label.opt{display:flex; gap:10px; align-items:flex-start; border:1px solid var(--border); border-radius:12px; padding:10px; cursor:pointer;}
+    label.opt:hover{background:#fafafa;}
+    input[type="radio"]{margin-top:2px;}
+    .feedback{margin:10px 0 6px; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:#fafafa; display:none;}
+    .feedback.ok{border-color:rgba(10,122,47,.35); background:rgba(10,122,47,.08); color:var(--ok);}
+    .feedback.bad{border-color:rgba(176,0,32,.35); background:rgba(176,0,32,.08); color:var(--bad);}
+    .explain{color:var(--text); margin-top:6px; font-size:13px; line-height:1.35;}
+    .explain .muted{color:var(--muted);}
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:8px;}
+    .small{font-size:12px; color:var(--muted);}
+    .kbd{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+         font-size:12px; padding:2px 6px; border:1px solid var(--border); border-radius:6px; background:#fff;}
+    .scorebar{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+    progress{width:220px; height:12px;}
+    .divider{height:1px; background:var(--border); margin:10px 0;}
+    .note{font-size:13px; color:var(--muted); margin-top:8px;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Diuretics Med Chem — Interactive Quiz</h1>
+    <p class="sub">
+      This is a foramt for future pratice questions<br>
+      <span class="small">Instant feedback • White background • Click an option to answer.</span>
+    </p>
+
+    <div class="toolbar">
+      <div class="scorebar">
+        <span class="pill"><strong>Score:</strong> <span id="score">0</span>/<span id="total">0</span></span>
+        <span class="pill"><strong>Answered:</strong> <span id="answered">0</span>/<span id="total2">0</span></span>
+        <progress id="prog" value="0" max="1"></progress>
+      </div>
+      <button id="shuffleBtn" type="button">Shuffle Questions</button>
+      <button id="resetBtn" type="button">Reset Answers</button>
+      <span class="pill">Tip: press <span class="kbd">Ctrl</span> + <span class="kbd">F</span> to find keywords</span>
+    </div>
+
+    <div id="quiz"></div>
+    <p class="note">Notes here</p>
+  </div>
+
+  <script>
+    const QUESTIONS = [
+      // questions topic
+      {
+        topic: "question",
+        q: "Question 1",
+        choices: [
+          "A",
+          "B",
+          "C",
+          "D"
+        ],
+        answer: 0,
+        explain: "Potency = dose/amount needed for a given response. Efficacy = the maximum effect."
+      }
+    ];
+
+    let state = {
+      order: [],
+      answers: {},   // qid -> choice index
+      locked: {},    // qid -> true once answered
+      score: 0,
+      answered: 0
+    };
+
+    function initOrder() {
+      state.order = QUESTIONS.map((_, i) => i);
+    }
+
+    function shuffle(array) {
+      for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function render() {
+      const quiz = document.getElementById("quiz");
+      quiz.innerHTML = "";
+
+      const total = QUESTIONS.length;
+      document.getElementById("total").textContent = total;
+      document.getElementById("total2").textContent = total;
+
+      state.order.forEach((qid, idx) => {
+        const item = QUESTIONS[qid];
+        const qDiv = document.createElement("div");
+        qDiv.className = "q";
+        qDiv.dataset.qid = qid;
+
+        const head = document.createElement("div");
+        head.className = "qhead";
+
+        const left = document.createElement("div");
+        const title = document.createElement("p");
+        title.className = "qtitle";
+        title.textContent = `Q${idx + 1}. ${item.q}`;
+        left.appendChild(title);
+
+        const tag = document.createElement("span");
+        tag.className = "tag";
+        tag.textContent = item.topic;
+
+        head.appendChild(left);
+        head.appendChild(tag);
+
+        const prompt = document.createElement("div");
+        prompt.className = "prompt";
+        // no extra prompt text for now; keep clean
+        prompt.innerHTML = "";
+
+        const opts = document.createElement("div");
+        opts.className = "opts";
+
+        item.choices.forEach((ch, ci) => {
+          const lab = document.createElement("label");
+          lab.className = "opt";
+          const radio = document.createElement("input");
+          radio.type = "radio";
+          radio.name = `q_${qid}`;
+          radio.value = ci;
+          radio.disabled = !!state.locked[qid];
+
+          if (state.answers[qid] === ci) radio.checked = true;
+
+          radio.addEventListener("change", () => onAnswer(qid, ci));
+
+          const span = document.createElement("span");
+          span.textContent = ch;
+
+          lab.appendChild(radio);
+          lab.appendChild(span);
+          opts.appendChild(lab);
+        });
+
+        const fb = document.createElement("div");
+        fb.className = "feedback";
+        fb.id = `fb_${qid}`;
+
+        const explain = document.createElement("div");
+        explain.className = "explain";
+        explain.id = `ex_${qid}`;
+
+        qDiv.appendChild(head);
+        qDiv.appendChild(prompt);
+        qDiv.appendChild(opts);
+        qDiv.appendChild(fb);
+        qDiv.appendChild(explain);
+
+        quiz.appendChild(qDiv);
+      });
+
+      updateScoreUI();
+      // re-show feedback for already-answered questions
+      for (const qidStr of Object.keys(state.locked)) {
+        const qid = Number(qidStr);
+        showFeedback(qid);
+      }
+    }
+
+    function onAnswer(qid, choiceIdx) {
+      if (state.locked[qid]) return;
+
+      state.answers[qid] = choiceIdx;
+      state.locked[qid] = true;
+      state.answered += 1;
+
+      const correct = (choiceIdx === QUESTIONS[qid].answer);
+      if (correct) state.score += 1;
+
+      showFeedback(qid);
+      updateScoreUI();
+      // disable radios for this q
+      document.querySelectorAll(`input[name="q_${qid}"]`).forEach(r => r.disabled = true);
+    }
+
+    function showFeedback(qid) {
+      const item = QUESTIONS[qid];
+      const fb = document.getElementById(`fb_${qid}`);
+      const ex = document.getElementById(`ex_${qid}`);
+      const chosen = state.answers[qid];
+
+      const isCorrect = chosen === item.answer;
+      fb.style.display = "block";
+      fb.classList.remove("ok", "bad");
+      fb.classList.add(isCorrect ? "ok" : "bad");
+
+      const chosenText = (chosen != null) ? item.choices[chosen] : "—";
+      const correctText = item.choices[item.answer];
+
+      fb.textContent = isCorrect ? "✅ Correct" : "❌ Incorrect";
+      ex.innerHTML = `
+        <div><span class="muted">Your answer:</span> <strong>${escapeHtml(chosenText)}</strong></div>
+        ${isCorrect ? "" : `<div><span class="muted">Correct answer:</span> <strong>${escapeHtml(correctText)}</strong></div>`}
+        <div class="divider"></div>
+        <div>${escapeHtml(item.explain)}</div>
+      `;
+    }
+
+    function updateScoreUI() {
+      const total = QUESTIONS.length;
+      document.getElementById("score").textContent = state.score;
+      document.getElementById("answered").textContent = state.answered;
+      const prog = document.getElementById("prog");
+      prog.max = total;
+      prog.value = state.answered;
+    }
+
+    function resetAll() {
+      state.answers = {};
+      state.locked = {};
+      state.score = 0;
+      state.answered = 0;
+      render();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    // Buttons
+    document.getElementById("resetBtn").addEventListener("click", resetAll);
+    document.getElementById("shuffleBtn").addEventListener("click", () => {
+      initOrder();
+      shuffle(state.order);
+      resetAll(); // reset answers too so shuffle doesn't confuse
+    });
+
+    // Init
+    initOrder();
+    render();
+  </script>
+</body>
+</html>
