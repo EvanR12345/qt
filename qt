@@ -42,6 +42,10 @@
     .setting{display:flex; align-items:center; gap:8px; margin:8px 0; font-size:14px;}
     .settings-panel textarea{width:100%; min-height:150px; resize:vertical; border:1px solid var(--border); border-radius:10px; padding:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:12px; box-sizing:border-box;}
     .settings-actions{display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;}
+    .settings-actions .bad{color:var(--bad);}
+    .manual-copy .q,
+    .manual-copy .q *{user-select:text; -webkit-user-select:text;}
+    .manual-copy label.opt{cursor:text;}
     .compact .q{padding:10px 10px 8px; margin:8px 0;}
     .compact .prompt{margin:6px 0 8px;}
     .compact .opts{gap:6px;}
@@ -51,7 +55,7 @@
   <div class="wrap">
     <h1>Diuretics Med Chem — Interactive Quiz</h1>
     <p class="sub">
-      This is a foramt for future pratice questions<br>
+      This is a format for future practice questions.<br>
       <span class="small">Instant feedback • White background • Click an option to answer.</span>
     </p>
 
@@ -69,6 +73,10 @@
 
     <div id="settingsPanel" class="settings-panel" aria-live="polite">
       <p class="settings-title">Quiz Settings</p>
+      <label class="setting">
+        <input id="manualCopyToggle" type="checkbox" />
+        Select text for manual Ctrl+C
+      </label>
       <label class="setting">
         <input id="showExplanationsToggle" type="checkbox" checked />
         Show explanations after answering
@@ -125,6 +133,7 @@
       answered: 0,
       choiceOrder: {},
       settings: {
+        manualCopy: false,
         showExplanations: true,
         shuffleOnReset: false,
         compactMode: false,
@@ -208,6 +217,12 @@
 
           radio.addEventListener("change", () => onAnswer(qid, originalChoiceIdx));
 
+          lab.addEventListener("click", (event) => {
+            if (!state.settings.manualCopy) return;
+            if (event.target === radio) return;
+            event.preventDefault();
+          });
+
           const span = document.createElement("span");
           span.textContent = item.choices[originalChoiceIdx];
 
@@ -235,6 +250,7 @@
 
       updateScoreUI();
       document.body.classList.toggle("compact", state.settings.compactMode);
+      document.body.classList.toggle("manual-copy", state.settings.manualCopy);
       for (const qidStr of Object.keys(state.locked)) {
         showFeedback(Number(qidStr));
       }
@@ -372,6 +388,11 @@
       render();
     });
 
+    document.getElementById("manualCopyToggle").addEventListener("change", (event) => {
+      state.settings.manualCopy = event.target.checked;
+      render();
+    });
+
     document.getElementById("shuffleOnResetToggle").addEventListener("change", (event) => {
       state.settings.shuffleOnReset = event.target.checked;
     });
@@ -392,8 +413,10 @@
       const html = document.getElementById("questionsHtmlInput").value;
       try {
         loadQuestionsFromHtml(html);
+        status.classList.remove("bad");
         status.textContent = `Loaded ${questionsBank.length} question(s).`;
       } catch (err) {
+        status.classList.add("bad");
         status.textContent = `Unable to load HTML: ${err.message}`;
       }
     });
