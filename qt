@@ -37,6 +37,13 @@
     progress{width:220px; height:12px;}
     .divider{height:1px; background:var(--border); margin:10px 0;}
     .note{font-size:13px; color:var(--muted); margin-top:8px;}
+    .settings-panel{display:none; margin:0 0 16px; padding:12px; border:1px solid var(--border); border-radius:12px; background:#fcfcfc;}
+    .settings-panel.open{display:block;}
+    .settings-title{font-weight:700; margin:0 0 10px;}
+    .setting{display:flex; align-items:center; gap:8px; margin:8px 0; font-size:14px;}
+    .compact .q{padding:10px 10px 8px; margin:8px 0;}
+    .compact .prompt{margin:6px 0 8px;}
+    .compact .opts{gap:6px;}
   </style>
 </head>
 <body>
@@ -55,7 +62,24 @@
       </div>
       <button id="shuffleBtn" type="button">Shuffle Questions</button>
       <button id="resetBtn" type="button">Reset Answers</button>
+      <button id="settingsBtn" type="button" aria-expanded="false" aria-controls="settingsPanel">Settings</button>
       <span class="pill">Tip: press <span class="kbd">Ctrl</span> + <span class="kbd">F</span> to find keywords</span>
+    </div>
+
+    <div id="settingsPanel" class="settings-panel" aria-live="polite">
+      <p class="settings-title">Quiz Settings</p>
+      <label class="setting">
+        <input id="showExplanationsToggle" type="checkbox" checked />
+        Show explanations after answering
+      </label>
+      <label class="setting">
+        <input id="shuffleOnResetToggle" type="checkbox" />
+        Shuffle questions when resetting answers
+      </label>
+      <label class="setting">
+        <input id="compactModeToggle" type="checkbox" />
+        Use compact question cards
+      </label>
     </div>
 
     <div id="quiz"></div>
@@ -84,7 +108,12 @@
       answers: {},   // qid -> choice index
       locked: {},    // qid -> true once answered
       score: 0,
-      answered: 0
+      answered: 0,
+      settings: {
+        showExplanations: true,
+        shuffleOnReset: false,
+        compactMode: false
+      }
     };
 
     function initOrder() {
@@ -175,6 +204,7 @@
       });
 
       updateScoreUI();
+      document.body.classList.toggle("compact", state.settings.compactMode);
       // re-show feedback for already-answered questions
       for (const qidStr of Object.keys(state.locked)) {
         const qid = Number(qidStr);
@@ -213,12 +243,18 @@
       const correctText = item.choices[item.answer];
 
       fb.textContent = isCorrect ? "✅ Correct" : "❌ Incorrect";
-      ex.innerHTML = `
-        <div><span class="muted">Your answer:</span> <strong>${escapeHtml(chosenText)}</strong></div>
-        ${isCorrect ? "" : `<div><span class="muted">Correct answer:</span> <strong>${escapeHtml(correctText)}</strong></div>`}
-        <div class="divider"></div>
-        <div>${escapeHtml(item.explain)}</div>
-      `;
+      if (state.settings.showExplanations) {
+        ex.style.display = "block";
+        ex.innerHTML = `
+          <div><span class="muted">Your answer:</span> <strong>${escapeHtml(chosenText)}</strong></div>
+          ${isCorrect ? "" : `<div><span class="muted">Correct answer:</span> <strong>${escapeHtml(correctText)}</strong></div>`}
+          <div class="divider"></div>
+          <div>${escapeHtml(item.explain)}</div>
+        `;
+      } else {
+        ex.style.display = "none";
+        ex.innerHTML = "";
+      }
     }
 
     function updateScoreUI() {
@@ -231,6 +267,10 @@
     }
 
     function resetAll() {
+      if (state.settings.shuffleOnReset) {
+        initOrder();
+        shuffle(state.order);
+      }
       state.answers = {};
       state.locked = {};
       state.score = 0;
@@ -254,6 +294,28 @@
       initOrder();
       shuffle(state.order);
       resetAll(); // reset answers too so shuffle doesn't confuse
+    });
+
+    const settingsBtn = document.getElementById("settingsBtn");
+    const settingsPanel = document.getElementById("settingsPanel");
+    settingsBtn.addEventListener("click", () => {
+      settingsPanel.classList.toggle("open");
+      const isOpen = settingsPanel.classList.contains("open");
+      settingsBtn.setAttribute("aria-expanded", String(isOpen));
+    });
+
+    document.getElementById("showExplanationsToggle").addEventListener("change", (event) => {
+      state.settings.showExplanations = event.target.checked;
+      render();
+    });
+
+    document.getElementById("shuffleOnResetToggle").addEventListener("change", (event) => {
+      state.settings.shuffleOnReset = event.target.checked;
+    });
+
+    document.getElementById("compactModeToggle").addEventListener("change", (event) => {
+      state.settings.compactMode = event.target.checked;
+      render();
     });
 
     // Init
