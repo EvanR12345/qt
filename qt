@@ -29,7 +29,6 @@
     .feedback.bad{border-color:rgba(176,0,32,.35); background:rgba(176,0,32,.08); color:var(--bad);}
     .explain{color:var(--text); margin-top:6px; font-size:13px; line-height:1.35;}
     .explain .muted{color:var(--muted);}
-    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:8px;}
     .small{font-size:12px; color:var(--muted);}
     .kbd{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
          font-size:12px; padding:2px 6px; border:1px solid var(--border); border-radius:6px; background:#fff;}
@@ -37,6 +36,15 @@
     progress{width:220px; height:12px;}
     .divider{height:1px; background:var(--border); margin:10px 0;}
     .note{font-size:13px; color:var(--muted); margin-top:8px;}
+    .settings-panel{display:none; margin:0 0 16px; padding:12px; border:1px solid var(--border); border-radius:12px; background:#fcfcfc;}
+    .settings-panel.open{display:block;}
+    .settings-title{font-weight:700; margin:0 0 10px;}
+    .setting{display:flex; align-items:center; gap:8px; margin:8px 0; font-size:14px;}
+    .settings-panel textarea{width:100%; min-height:150px; resize:vertical; border:1px solid var(--border); border-radius:10px; padding:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:12px; box-sizing:border-box;}
+    .settings-actions{display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;}
+    .compact .q{padding:10px 10px 8px; margin:8px 0;}
+    .compact .prompt{margin:6px 0 8px;}
+    .compact .opts{gap:6px;}
   </style>
 </head>
 <body>
@@ -55,7 +63,44 @@
       </div>
       <button id="shuffleBtn" type="button">Shuffle Questions</button>
       <button id="resetBtn" type="button">Reset Answers</button>
+      <button id="settingsBtn" type="button" aria-expanded="false" aria-controls="settingsPanel">Settings</button>
       <span class="pill">Tip: press <span class="kbd">Ctrl</span> + <span class="kbd">F</span> to find keywords</span>
+    </div>
+
+    <div id="settingsPanel" class="settings-panel" aria-live="polite">
+      <p class="settings-title">Quiz Settings</p>
+      <label class="setting">
+        <input id="showExplanationsToggle" type="checkbox" checked />
+        Show explanations after answering
+      </label>
+      <label class="setting">
+        <input id="shuffleOnResetToggle" type="checkbox" />
+        Shuffle questions when resetting answers
+      </label>
+      <label class="setting">
+        <input id="compactModeToggle" type="checkbox" />
+        Use compact question cards
+      </label>
+      <label class="setting">
+        <input id="shuffleOptionsToggle" type="checkbox" />
+        Swap/shuffle answer options for each question
+      </label>
+
+      <p class="settings-title" style="margin-top:12px;">Load Questions from HTML</p>
+      <textarea id="questionsHtmlInput" placeholder="Paste HTML using this format:
+<article data-question data-topic=&quot;chem&quot; data-answer=&quot;1&quot; data-explain=&quot;Because...&quot;>
+  <h3>Which option is correct?</h3>
+  <ul>
+    <li>Option A</li>
+    <li>Option B</li>
+    <li>Option C</li>
+  </ul>
+</article>"></textarea>
+      <div class="settings-actions">
+        <button id="loadQuestionsHtmlBtn" type="button">Load HTML Questions</button>
+        <button id="copyPromptBtn" type="button">in put promt in chat</button>
+        <span id="htmlLoadStatus" class="small"></span>
+      </div>
     </div>
 
     <div id="quiz"></div>
@@ -63,17 +108,11 @@
   </div>
 
   <script>
-    const QUESTIONS = [
-      // questions topic
+    let questionsBank = [
       {
         topic: "question",
         q: "Question 1",
-        choices: [
-          "A",
-          "B",
-          "C",
-          "D"
-        ],
+        choices: ["A", "B", "C", "D"],
         answer: 0,
         explain: "Potency = dose/amount needed for a given response. Efficacy = the maximum effect."
       }
@@ -81,14 +120,21 @@
 
     let state = {
       order: [],
-      answers: {},   // qid -> choice index
-      locked: {},    // qid -> true once answered
+      answers: {},
+      locked: {},
       score: 0,
-      answered: 0
+      answered: 0,
+      choiceOrder: {},
+      settings: {
+        showExplanations: true,
+        shuffleOnReset: false,
+        compactMode: false,
+        shuffleOptions: false
+      }
     };
 
     function initOrder() {
-      state.order = QUESTIONS.map((_, i) => i);
+      state.order = questionsBank.map((_, i) => i);
     }
 
     function shuffle(array) {
@@ -98,16 +144,30 @@
       }
     }
 
+    function getChoiceOrder(qid, totalChoices) {
+      if (!state.settings.shuffleOptions) {
+        return Array.from({ length: totalChoices }, (_, i) => i);
+      }
+
+      if (!state.choiceOrder[qid] || state.choiceOrder[qid].length !== totalChoices) {
+        const idx = Array.from({ length: totalChoices }, (_, i) => i);
+        shuffle(idx);
+        state.choiceOrder[qid] = idx;
+      }
+
+      return state.choiceOrder[qid];
+    }
+
     function render() {
       const quiz = document.getElementById("quiz");
       quiz.innerHTML = "";
 
-      const total = QUESTIONS.length;
+      const total = questionsBank.length;
       document.getElementById("total").textContent = total;
       document.getElementById("total2").textContent = total;
 
       state.order.forEach((qid, idx) => {
-        const item = QUESTIONS[qid];
+        const item = questionsBank[qid];
         const qDiv = document.createElement("div");
         qDiv.className = "q";
         qDiv.dataset.qid = qid;
@@ -130,27 +190,27 @@
 
         const prompt = document.createElement("div");
         prompt.className = "prompt";
-        // no extra prompt text for now; keep clean
         prompt.innerHTML = "";
 
         const opts = document.createElement("div");
         opts.className = "opts";
 
-        item.choices.forEach((ch, ci) => {
+        const choiceOrder = getChoiceOrder(qid, item.choices.length);
+        choiceOrder.forEach((originalChoiceIdx) => {
           const lab = document.createElement("label");
           lab.className = "opt";
           const radio = document.createElement("input");
           radio.type = "radio";
           radio.name = `q_${qid}`;
-          radio.value = ci;
+          radio.value = originalChoiceIdx;
           radio.disabled = !!state.locked[qid];
 
-          if (state.answers[qid] === ci) radio.checked = true;
+          if (state.answers[qid] === originalChoiceIdx) radio.checked = true;
 
-          radio.addEventListener("change", () => onAnswer(qid, ci));
+          radio.addEventListener("change", () => onAnswer(qid, originalChoiceIdx));
 
           const span = document.createElement("span");
-          span.textContent = ch;
+          span.textContent = item.choices[originalChoiceIdx];
 
           lab.appendChild(radio);
           lab.appendChild(span);
@@ -175,10 +235,9 @@
       });
 
       updateScoreUI();
-      // re-show feedback for already-answered questions
+      document.body.classList.toggle("compact", state.settings.compactMode);
       for (const qidStr of Object.keys(state.locked)) {
-        const qid = Number(qidStr);
-        showFeedback(qid);
+        showFeedback(Number(qidStr));
       }
     }
 
@@ -189,17 +248,16 @@
       state.locked[qid] = true;
       state.answered += 1;
 
-      const correct = (choiceIdx === QUESTIONS[qid].answer);
+      const correct = (choiceIdx === questionsBank[qid].answer);
       if (correct) state.score += 1;
 
       showFeedback(qid);
       updateScoreUI();
-      // disable radios for this q
       document.querySelectorAll(`input[name="q_${qid}"]`).forEach(r => r.disabled = true);
     }
 
     function showFeedback(qid) {
-      const item = QUESTIONS[qid];
+      const item = questionsBank[qid];
       const fb = document.getElementById(`fb_${qid}`);
       const ex = document.getElementById(`ex_${qid}`);
       const chosen = state.answers[qid];
@@ -213,28 +271,39 @@
       const correctText = item.choices[item.answer];
 
       fb.textContent = isCorrect ? "✅ Correct" : "❌ Incorrect";
-      ex.innerHTML = `
-        <div><span class="muted">Your answer:</span> <strong>${escapeHtml(chosenText)}</strong></div>
-        ${isCorrect ? "" : `<div><span class="muted">Correct answer:</span> <strong>${escapeHtml(correctText)}</strong></div>`}
-        <div class="divider"></div>
-        <div>${escapeHtml(item.explain)}</div>
-      `;
+      if (state.settings.showExplanations) {
+        ex.style.display = "block";
+        ex.innerHTML = `
+          <div><span class="muted">Your answer:</span> <strong>${escapeHtml(chosenText)}</strong></div>
+          ${isCorrect ? "" : `<div><span class="muted">Correct answer:</span> <strong>${escapeHtml(correctText)}</strong></div>`}
+          <div class="divider"></div>
+          <div>${escapeHtml(item.explain || "")}</div>
+        `;
+      } else {
+        ex.style.display = "none";
+        ex.innerHTML = "";
+      }
     }
 
     function updateScoreUI() {
-      const total = QUESTIONS.length;
+      const total = questionsBank.length;
       document.getElementById("score").textContent = state.score;
       document.getElementById("answered").textContent = state.answered;
       const prog = document.getElementById("prog");
-      prog.max = total;
+      prog.max = Math.max(total, 1);
       prog.value = state.answered;
     }
 
     function resetAll() {
+      if (state.settings.shuffleOnReset) {
+        initOrder();
+        shuffle(state.order);
+      }
       state.answers = {};
       state.locked = {};
       state.score = 0;
       state.answered = 0;
+      state.choiceOrder = {};
       render();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -248,15 +317,127 @@
         .replaceAll("'", "&#039;");
     }
 
-    // Buttons
+    function loadQuestionsFromHtml(html) {
+      const temp = document.createElement("div");
+      temp.innerHTML = html;
+
+      const blocks = Array.from(temp.querySelectorAll("[data-question]"));
+      if (!blocks.length) {
+        throw new Error("No question blocks found. Add elements with data-question attribute.");
+      }
+
+      const parsed = blocks.map((block, idx) => {
+        const topic = block.getAttribute("data-topic") || "custom";
+        const answer = Number(block.getAttribute("data-answer"));
+        const explain = block.getAttribute("data-explain") || "No explanation provided.";
+
+        const qNode = block.querySelector("[data-q], h1, h2, h3, h4, p, div, span");
+        const qText = (qNode ? qNode.textContent : "").trim() || `Question ${idx + 1}`;
+
+        const choices = Array.from(block.querySelectorAll("li, [data-choice]"))
+          .map(el => (el.textContent || "").trim())
+          .filter(Boolean);
+
+        if (choices.length < 2) {
+          throw new Error(`Question ${idx + 1} must have at least 2 choices.`);
+        }
+        if (!Number.isInteger(answer) || answer < 0 || answer >= choices.length) {
+          throw new Error(`Question ${idx + 1} has invalid data-answer index.`);
+        }
+
+        return { topic, q: qText, choices, answer, explain };
+      });
+
+      questionsBank = parsed;
+      initOrder();
+      resetAll();
+    }
+
     document.getElementById("resetBtn").addEventListener("click", resetAll);
     document.getElementById("shuffleBtn").addEventListener("click", () => {
       initOrder();
       shuffle(state.order);
-      resetAll(); // reset answers too so shuffle doesn't confuse
+      resetAll();
     });
 
-    // Init
+    const settingsBtn = document.getElementById("settingsBtn");
+    const settingsPanel = document.getElementById("settingsPanel");
+    settingsBtn.addEventListener("click", () => {
+      settingsPanel.classList.toggle("open");
+      const isOpen = settingsPanel.classList.contains("open");
+      settingsBtn.setAttribute("aria-expanded", String(isOpen));
+    });
+
+    document.getElementById("showExplanationsToggle").addEventListener("change", (event) => {
+      state.settings.showExplanations = event.target.checked;
+      render();
+    });
+
+    document.getElementById("shuffleOnResetToggle").addEventListener("change", (event) => {
+      state.settings.shuffleOnReset = event.target.checked;
+    });
+
+    document.getElementById("compactModeToggle").addEventListener("change", (event) => {
+      state.settings.compactMode = event.target.checked;
+      render();
+    });
+
+    document.getElementById("shuffleOptionsToggle").addEventListener("change", (event) => {
+      state.settings.shuffleOptions = event.target.checked;
+      state.choiceOrder = {};
+      render();
+    });
+
+    document.getElementById("loadQuestionsHtmlBtn").addEventListener("click", () => {
+      const status = document.getElementById("htmlLoadStatus");
+      const html = document.getElementById("questionsHtmlInput").value;
+      try {
+        loadQuestionsFromHtml(html);
+        status.textContent = `Loaded ${questionsBank.length} question(s).`;
+      } catch (err) {
+        status.textContent = `Unable to load HTML: ${err.message}`;
+      }
+    });
+
+    const clipboardPrompt = `Convert my questions into the exact HTML format below.
+
+Rules
+- Output ONLY HTML
+- Use this exact structure
+- Keep all wording and option order exactly the same
+- data-answer must be zero based index (first option = 0, second = 1, etc.)
+- Support any number of options
+
+Format
+
+<article data-question data-topic="chem" data-answer="0" data-explain="Because...">
+  <h3>Question text</h3>
+  <ul>
+    <li>Option 1</li>
+    <li>Option 2</li>
+    <li>Option 3</li>
+  </ul>
+</article>`;
+
+    document.getElementById("copyPromptBtn").addEventListener("click", async () => {
+      const status = document.getElementById("htmlLoadStatus");
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(clipboardPrompt);
+        } else {
+          const temp = document.createElement("textarea");
+          temp.value = clipboardPrompt;
+          document.body.appendChild(temp);
+          temp.select();
+          document.execCommand("copy");
+          temp.remove();
+        }
+        status.textContent = "Prompt copied to clipboard.";
+      } catch (err) {
+        status.textContent = "Could not copy prompt. Copy manually from code.";
+      }
+    });
+
     initOrder();
     render();
   </script>
