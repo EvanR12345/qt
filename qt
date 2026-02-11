@@ -131,6 +131,21 @@
       <div id="loadQuestionsSection">
         <p class="settings-title" style="margin-top:12px;">Load Questions from HTML</p>
         <textarea id="questionsHtmlInput" placeholder="Paste HTML using this format:
+      <p class="settings-title" style="margin-top:12px;">Colour Theme</p>
+      <label class="setting column">
+        <span>Page background</span>
+        <input id="bgColorInput" type="color" value="#ffffff" />
+      </label>
+      <label class="setting column">
+        <span>Cards + controls tint</span>
+        <input id="surfaceTintInput" type="color" value="#fafafa" />
+      </label>
+      <div class="settings-actions">
+        <button id="resetColorsBtn" type="button">Reset Colours</button>
+      </div>
+
+      <p class="settings-title" style="margin-top:12px;">Load Questions from HTML</p>
+      <textarea id="questionsHtmlInput" placeholder="Paste HTML using this format:
 <article data-question data-topic=&quot;chem&quot; data-answer=&quot;1&quot; data-explain=&quot;Because...&quot;>
   <h3>Which option is correct?</h3>
   <ul>
