@@ -1,4 +1,3 @@
-<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -129,6 +128,7 @@
       </label>
       <div class="settings-actions">
         <button id="resetColorsBtn" type="button">Reset Colours</button>
+        <button id="clearSavedDataBtn" type="button">Clear Saved Data</button>
       </div>
 
       <div class="settings-actions" style="margin-top:12px;">
@@ -219,6 +219,16 @@
       choices: [...q.choices]
     }));
 
+    const DEFAULT_SETTINGS = {
+      showExplanations: true,
+      shuffleOnReset: false,
+      compactMode: false,
+      shuffleOptions: false,
+      titleText: "Choice Title.",
+      instantFeedbackEnabled: true,
+      nightMode: false
+    };
+
     let state = {
       order: [],
       answers: {},
@@ -226,6 +236,7 @@
       score: 0,
       answered: 0,
       choiceOrder: {},
+      settings: { ...DEFAULT_SETTINGS }
       settings: {
         showExplanations: true,
         shuffleOnReset: false,
@@ -258,6 +269,8 @@
       settings: "qt.quiz.settings.v1",
       questionsHtmlInput: "qt.quiz.questionsHtmlInput.v1",
       answerFixInput: "qt.quiz.answerFixInput.v1",
+      questionsBank: "qt.quiz.questionsBank.v1",
+      progress: "qt.quiz.progress.v1"
       questionsBank: "qt.quiz.questionsBank.v1"
     };
 
@@ -305,6 +318,52 @@
       writeStorageJson(STORAGE_KEYS.questionsBank, questionsBank);
     }
 
+    function isValidProgress(candidate) {
+      if (!candidate || typeof candidate !== "object") return false;
+      const { answers, locked, score, answered, order, choiceOrder } = candidate;
+      if (!answers || typeof answers !== "object") return false;
+      if (!locked || typeof locked !== "object") return false;
+      if (!Number.isInteger(score) || score < 0) return false;
+      if (!Number.isInteger(answered) || answered < 0) return false;
+      if (!Array.isArray(order) || order.length !== questionsBank.length) return false;
+      if (!choiceOrder || typeof choiceOrder !== "object") return false;
+
+      const total = questionsBank.length;
+      const inRange = (n) => Number.isInteger(n) && n >= 0 && n < total;
+      if (!order.every(inRange)) return false;
+      if (new Set(order).size !== total) return false;
+
+      for (const [qidStr, choiceIdx] of Object.entries(answers)) {
+        const qid = Number(qidStr);
+        if (!inRange(qid)) return false;
+        if (!Number.isInteger(choiceIdx) || choiceIdx < 0 || choiceIdx >= questionsBank[qid].choices.length) return false;
+      }
+
+      for (const qidStr of Object.keys(locked)) {
+        const qid = Number(qidStr);
+        if (!inRange(qid)) return false;
+      }
+
+      for (const [qidStr, arr] of Object.entries(choiceOrder)) {
+        const qid = Number(qidStr);
+        if (!inRange(qid) || !Array.isArray(arr) || arr.length !== questionsBank[qid].choices.length) return false;
+        if (!arr.every((idx) => Number.isInteger(idx) && idx >= 0 && idx < questionsBank[qid].choices.length)) return false;
+      }
+
+      return true;
+    }
+
+    function saveProgress() {
+      writeStorageJson(STORAGE_KEYS.progress, {
+        answers: state.answers,
+        locked: state.locked,
+        score: state.score,
+        answered: state.answered,
+        order: state.order,
+        choiceOrder: state.choiceOrder
+      });
+    }
+
     function hydrateFromStorage() {
       const storedSettings = readStorageJson(STORAGE_KEYS.settings);
       if (storedSettings && typeof storedSettings === "object") {
@@ -331,6 +390,42 @@
       if (typeof answerFixDraft === "string") {
         document.getElementById("answerFixInput").value = answerFixDraft.slice(0, MAX_ANSWER_FIX_INPUT_LENGTH);
       }
+    }
+
+    function hydrateProgressFromStorage() {
+      const storedProgress = readStorageJson(STORAGE_KEYS.progress);
+      if (!isValidProgress(storedProgress)) return;
+      state.answers = { ...storedProgress.answers };
+      state.locked = { ...storedProgress.locked };
+      state.score = storedProgress.score;
+      state.answered = storedProgress.answered;
+      state.order = [...storedProgress.order];
+      state.choiceOrder = { ...storedProgress.choiceOrder };
+    }
+
+    function clearSavedData() {
+      const ok = window.confirm("Confirm resetting all website data? This clears saved settings, drafts, custom questions, and progress.");
+      if (!ok) return;
+
+      Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
+
+      questionsBank = DEFAULT_QUESTIONS.map((q) => ({ ...q, choices: [...q.choices] }));
+      state.settings = { ...DEFAULT_SETTINGS };
+      state.answers = {};
+      state.locked = {};
+      state.score = 0;
+      state.answered = 0;
+      state.choiceOrder = {};
+
+      initOrder();
+      syncSettingsControls();
+      document.getElementById("questionsHtmlInput").value = "";
+      document.getElementById("answerFixInput").value = "";
+      setStatus("Saved website data cleared.");
+      setAnswerFixStatus("Saved answer-fix data cleared.");
+      updateQuizTitle();
+      setNightMode(state.settings.nightMode);
+      render();
     }
 
     function syncSettingsControls() {
@@ -427,6 +522,8 @@
       }
 
       const answerLetter = String.fromCharCode(65 + answerIdx);
+      saveQuestionsBank();
+      saveProgress();
       setAnswerFixStatus(`Updated question ${questionNumber} answer to ${answerLetter}. Existing answers were kept.`);
     }
 
@@ -641,6 +738,7 @@
       if (state.locked[qid]) return;
 
       state.answers[qid] = choiceIdx;
+      saveProgress();
       if (state.settings.instantFeedbackEnabled) {
         gradeAnswer(qid);
         return;
@@ -672,6 +770,7 @@
 
       const checkBtn = document.getElementById(`check_${qid}`);
       if (checkBtn) checkBtn.disabled = true;
+      saveProgress();
     }
 
     function showFeedback(qid) {
@@ -729,6 +828,7 @@
       state.score = 0;
       state.answered = 0;
       state.choiceOrder = {};
+      saveProgress();
       render();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -902,6 +1002,8 @@
       applyThemeColors(theme);
     });
 
+    document.getElementById("clearSavedDataBtn").addEventListener("click", clearSavedData);
+
     document.getElementById("questionsHtmlInput").addEventListener("input", (event) => {
       writeStorageText(STORAGE_KEYS.questionsHtmlInput, event.target.value.slice(0, MAX_HTML_INPUT_LENGTH));
     });
@@ -978,6 +1080,7 @@ Format
     hydrateFromStorage();
     syncSettingsControls();
     initOrder();
+    hydrateProgressFromStorage();
     updateQuizTitle();
     setNightMode(state.settings.nightMode);
     render();
