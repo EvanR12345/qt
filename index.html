@@ -58,6 +58,11 @@
     .note{font-size:13px; color:var(--muted); margin-top:8px;}
     .settings-panel{display:none; margin:0 0 16px; padding:12px; border:1px solid var(--border); border-radius:12px; background:var(--surface-soft);}
     .settings-panel.open{display:block;}
+    .settings-tabs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
+    .settings-tab{padding:8px 12px; font-size:13px;}
+    .settings-tab.active{background:var(--accent-soft); border-color:var(--accent); color:var(--text);}
+    .settings-content{display:none;}
+    .settings-content.active{display:block;}
     .settings-title{font-weight:700; margin:0 0 10px;}
     .setting{display:flex; align-items:center; gap:8px; margin:8px 0; font-size:14px;}
     .setting.column{align-items:flex-start; flex-direction:column; gap:6px;}
@@ -70,6 +75,8 @@
     .settings-panel textarea{width:100%; min-height:150px; resize:vertical; border:1px solid var(--border); border-radius:10px; padding:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:12px; box-sizing:border-box;}
     .sync-input{width:100%; border:1px solid var(--border); border-radius:10px; padding:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:12px; box-sizing:border-box;}
     .settings-actions{display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;}
+    .sync-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:8px 14px; margin:10px 0;}
+    .sync-grid .setting{margin:0;}
     #clearSavedDataBtn{background:#dc2626; border-color:#b91c1c; color:#fff;}
     #clearSavedDataBtn:hover{background:#b91c1c;}
     body.fancy-ui #clearSavedDataBtn{background:linear-gradient(145deg,#ef4444,#dc2626); border-color:#7f1d1d; color:#fff;}
@@ -101,82 +108,109 @@
     </div>
 
     <div id="settingsPanel" class="settings-panel" aria-live="polite">
-      <p class="settings-title">Quiz Settings</p>
-      <label class="setting">
-        <input id="showExplanationsToggle" type="checkbox" checked />
-        Show explanations after answering
-      </label>
-      <label class="setting">
-        <input id="shuffleOnResetToggle" type="checkbox" />
-        Shuffle questions when resetting answers
-      </label>
-      <label class="setting">
-        <input id="compactModeToggle" type="checkbox" />
-        Use compact question cards
-      </label>
-      <label class="setting">
-        <input id="shuffleOptionsToggle" type="checkbox" />
-        Swap/shuffle answer options for each question
-      </label>
-      <label class="setting column">
-        <span>Quiz title</span>
-        <div class="title-row">
-          <input id="titleInput" type="text" value="Choice Title." />
-          <select id="titleStyleSelect" aria-label="Title style preset">
-            <option value="classic">Classic Clean</option>
-            <option value="exam">Exam Prep</option>
-            <option value="flash">Flash Cards</option>
-            <option value="brain">Brain Boost</option>
-            <option value="neon">Neon Study Night</option>
-            <option value="ocean">Ocean Calm</option>
-            <option value="forest">Forest Focus</option>
-            <option value="sunset">Sunset Energy</option>
-            <option value="royal">Royal Purple</option>
-            <option value="mono">Monochrome Pro</option>
-          </select>
+      <div class="settings-tabs" role="tablist" aria-label="Settings tabs">
+        <button id="settingsTabBtn" class="settings-tab active" type="button" role="tab" aria-selected="true" aria-controls="settingsTab">Settings</button>
+        <button id="syncTabBtn" class="settings-tab" type="button" role="tab" aria-selected="false" aria-controls="syncTab">Sync Settings</button>
+      </div>
+
+      <section id="settingsTab" class="settings-content active" role="tabpanel" aria-labelledby="settingsTabBtn">
+        <p class="settings-title">Quiz Settings</p>
+        <label class="setting">
+          <input id="showExplanationsToggle" type="checkbox" checked />
+          Show explanations after answering
+        </label>
+        <label class="setting">
+          <input id="shuffleOnResetToggle" type="checkbox" />
+          Shuffle questions when resetting answers
+        </label>
+        <label class="setting">
+          <input id="compactModeToggle" type="checkbox" />
+          Use compact question cards
+        </label>
+        <label class="setting">
+          <input id="shuffleOptionsToggle" type="checkbox" />
+          Swap/shuffle answer options for each question
+        </label>
+        <label class="setting column">
+          <span>Quiz title</span>
+          <div class="title-row">
+            <input id="titleInput" type="text" value="Choice Title." />
+            <select id="titleStyleSelect" aria-label="Title style preset">
+              <option value="classic">Classic Clean</option>
+              <option value="exam">Exam Prep</option>
+              <option value="flash">Flash Cards</option>
+              <option value="brain">Brain Boost</option>
+              <option value="neon">Neon Study Night</option>
+              <option value="ocean">Ocean Calm</option>
+              <option value="forest">Forest Focus</option>
+              <option value="sunset">Sunset Energy</option>
+              <option value="royal">Royal Purple</option>
+              <option value="mono">Monochrome Pro</option>
+            </select>
+          </div>
+        </label>
+        <label class="setting">
+          <input id="instantFeedbackToggle" type="checkbox" checked />
+          Enable Instant Feedback
+        </label>
+        <label class="setting">
+          <input id="fancyButtonsToggle" type="checkbox" />
+          Fancy buttons + option cards
+        </label>
+
+        <p class="settings-title" style="margin-top:12px;">Colour Theme</p>
+        <label class="setting column">
+          <span>Page background</span>
+          <input id="bgColorInput" type="color" value="#ffffff" />
+        </label>
+        <label class="setting column">
+          <span>Cards + controls tint</span>
+          <input id="surfaceTintInput" type="color" value="#fafafa" />
+        </label>
+        <label class="setting">
+          <input id="nightModeToggle" type="checkbox" />
+          Enable Night mode
+        </label>
+        <div class="settings-actions">
+          <button id="restoreDefaultColorsBtn" type="button">Restore Default Colours</button>
+          <button id="clearSavedDataBtn" type="button">Clear Saved Data</button>
         </div>
-      </label>
-      <label class="setting">
-        <input id="instantFeedbackToggle" type="checkbox" checked />
-        Enable Instant Feedback
-      </label>
-      <label class="setting">
-        <input id="fancyButtonsToggle" type="checkbox" />
-        Fancy buttons + option cards
-      </label>
 
-      <p class="settings-title" style="margin-top:12px;">Colour Theme</p>
-      <label class="setting column">
-        <span>Page background</span>
-        <input id="bgColorInput" type="color" value="#ffffff" />
-      </label>
-      <label class="setting column">
-        <span>Cards + controls tint</span>
-        <input id="surfaceTintInput" type="color" value="#fafafa" />
-      </label>
-      <label class="setting">
-        <input id="nightModeToggle" type="checkbox" />
-        Enable Night mode
-      </label>
-      <div class="settings-actions">
-        <button id="restoreDefaultColorsBtn" type="button">Restore Default Colours</button>
-        <button id="clearSavedDataBtn" type="button">Clear Saved Data</button>
-      </div>
+        <div class="settings-actions" style="margin-top:12px;">
+          <button id="toggleHtmlSectionBtn" type="button" aria-expanded="true" aria-controls="loadQuestionsSection">Hide Load Questions from HTML</button>
+        </div>
+      </section>
 
-      <p class="settings-title" style="margin-top:12px;">Sync Progress + Settings</p>
-      <label class="setting column">
-        <span>Paste a sync code from another device</span>
-        <input id="syncDataInput" class="sync-input" type="text" placeholder="Paste sync code here" autocomplete="off" spellcheck="false" />
-      </label>
-      <div class="settings-actions">
-        <button id="createSyncCodeBtn" type="button">Create Sync Code</button>
-        <button id="loadSyncCodeBtn" type="button">Load Sync Code</button>
-        <span id="syncStatus" class="small"></span>
-      </div>
+      <section id="syncTab" class="settings-content" role="tabpanel" aria-labelledby="syncTabBtn">
+        <p class="settings-title">Sync Settings</p>
+        <label class="setting column">
+          <span>Sync password</span>
+          <input id="syncPasswordInput" type="password" placeholder="Enter password required for sync" autocomplete="off" spellcheck="false" />
+        </label>
+        <div class="sync-grid">
+          <label class="setting"><input id="syncShareSettings" type="checkbox" checked /> Share quiz settings</label>
+          <label class="setting"><input id="syncShareTheme" type="checkbox" checked /> Share theme + title style</label>
+          <label class="setting"><input id="syncShareProgress" type="checkbox" checked /> Share score + answered count</label>
+          <label class="setting"><input id="syncShareAnswers" type="checkbox" checked /> Share selected answers</label>
+          <label class="setting"><input id="syncShareOrder" type="checkbox" checked /> Share question order</label>
+          <label class="setting"><input id="syncShareChoiceOrder" type="checkbox" checked /> Share option order</label>
+          <label class="setting"><input id="syncShareQuestionBank" type="checkbox" checked /> Share loaded questions</label>
+          <label class="setting"><input id="syncShareSavedQuizzes" type="checkbox" checked /> Share saved quiz list</label>
+          <label class="setting"><input id="syncShareHtmlDraft" type="checkbox" checked /> Share HTML import draft</label>
+          <label class="setting"><input id="syncShareAnswerFixDraft" type="checkbox" checked /> Share answer-fix draft</label>
+          <label class="setting"><input id="syncShareSyncDraft" type="checkbox" /> Keep pasted sync code text</label>
+        </div>
+        <label class="setting column">
+          <span>Paste a sync code from another device</span>
+          <input id="syncDataInput" class="sync-input" type="text" placeholder="Paste sync code here" autocomplete="off" spellcheck="false" />
+        </label>
+        <div class="settings-actions">
+          <button id="createSyncCodeBtn" type="button">Create Sync Code</button>
+          <button id="loadSyncCodeBtn" type="button">Load Sync Code</button>
+          <span id="syncStatus" class="small"></span>
+        </div>
+      </section>
 
-      <div class="settings-actions" style="margin-top:12px;">
-        <button id="toggleHtmlSectionBtn" type="button" aria-expanded="true" aria-controls="loadQuestionsSection">Hide Load Questions from HTML</button>
-      </div>
       <div id="loadQuestionsSection">
         <p class="settings-title" style="margin-top:12px;">Load Questions from HTML</p>
         <textarea id="questionsHtmlInput" placeholder="Paste HTML using this format:">
@@ -285,7 +319,20 @@
       fancyButtons: false,
       nightMode: false,
       dayTheme: { bg: "#ffffff", surfaceTint: "#fafafa" },
-      nightTheme: { bg: "#0f172a", surfaceTint: "#1e293b" }
+      nightTheme: { bg: "#0f172a", surfaceTint: "#1e293b" },
+      syncPrefs: {
+        shareSettings: true,
+        shareTheme: true,
+        shareProgress: true,
+        shareAnswers: true,
+        shareOrder: true,
+        shareChoiceOrder: true,
+        shareQuestionBank: true,
+        shareSavedQuizzes: true,
+        shareHtmlDraft: true,
+        shareAnswerFixDraft: true,
+        shareSyncDraft: false
+      }
     };
 
     let state = {
@@ -322,7 +369,8 @@
       questionsBank: "qt.quiz.questionsBank.v1",
       progress: "qt.quiz.progress.v1",
       savedQuizzes: "qt.quiz.savedQuizzes.v1",
-      syncDataInput: "qt.quiz.syncDataInput.v1"
+      syncDataInput: "qt.quiz.syncDataInput.v1",
+      syncPassword: "qt.quiz.syncPassword.v1"
     };
 
     const TITLE_STYLE_PRESETS = {
@@ -433,6 +481,7 @@
       if (storedSettings && typeof storedSettings === "object") {
         state.settings = { ...state.settings, ...storedSettings };
       }
+      state.settings.syncPrefs = normalizeSyncPrefs(state.settings.syncPrefs);
       state.settings.dayTheme = {
         bg: normalizeHexColor(state.settings.dayTheme?.bg, DEFAULT_THEME.bg),
         surfaceTint: normalizeHexColor(state.settings.dayTheme?.surfaceTint, DEFAULT_THEME.surfaceTint)
@@ -466,6 +515,11 @@
       const syncDraft = localStorage.getItem(STORAGE_KEYS.syncDataInput);
       if (typeof syncDraft === "string") {
         document.getElementById("syncDataInput").value = syncDraft;
+      }
+
+      const syncPassword = localStorage.getItem(STORAGE_KEYS.syncPassword);
+      if (typeof syncPassword === "string") {
+        document.getElementById("syncPasswordInput").value = syncPassword;
       }
     }
 
@@ -527,6 +581,14 @@
       window.location.reload();
     }
 
+    function getDefaultSyncPrefs() {
+      return { ...DEFAULT_SETTINGS.syncPrefs };
+    }
+
+    function normalizeSyncPrefs(rawPrefs) {
+      return { ...getDefaultSyncPrefs(), ...(rawPrefs && typeof rawPrefs === "object" ? rawPrefs : {}) };
+    }
+
     function syncSettingsControls() {
       document.getElementById("showExplanationsToggle").checked = !!state.settings.showExplanations;
       document.getElementById("shuffleOnResetToggle").checked = !!state.settings.shuffleOnReset;
@@ -537,6 +599,20 @@
       document.getElementById("nightModeToggle").checked = !!state.settings.nightMode;
       document.getElementById("titleInput").value = state.settings.titleText || "Choice Title.";
       document.getElementById("titleStyleSelect").value = state.settings.titleStyle || "classic";
+
+      const syncPrefs = normalizeSyncPrefs(state.settings.syncPrefs);
+      state.settings.syncPrefs = syncPrefs;
+      document.getElementById("syncShareSettings").checked = !!syncPrefs.shareSettings;
+      document.getElementById("syncShareTheme").checked = !!syncPrefs.shareTheme;
+      document.getElementById("syncShareProgress").checked = !!syncPrefs.shareProgress;
+      document.getElementById("syncShareAnswers").checked = !!syncPrefs.shareAnswers;
+      document.getElementById("syncShareOrder").checked = !!syncPrefs.shareOrder;
+      document.getElementById("syncShareChoiceOrder").checked = !!syncPrefs.shareChoiceOrder;
+      document.getElementById("syncShareQuestionBank").checked = !!syncPrefs.shareQuestionBank;
+      document.getElementById("syncShareSavedQuizzes").checked = !!syncPrefs.shareSavedQuizzes;
+      document.getElementById("syncShareHtmlDraft").checked = !!syncPrefs.shareHtmlDraft;
+      document.getElementById("syncShareAnswerFixDraft").checked = !!syncPrefs.shareAnswerFixDraft;
+      document.getElementById("syncShareSyncDraft").checked = !!syncPrefs.shareSyncDraft;
     }
 
     function applyTitleStyle(styleKey) {
@@ -658,6 +734,31 @@
       status.textContent = message;
       status.classList.toggle("status-error", isError);
       status.classList.toggle("status-ok", !isError);
+    }
+
+    async function hashPassword(password, salt) {
+      const enc = new TextEncoder();
+      const data = enc.encode(`${salt}:${password}`);
+      const digest = await crypto.subtle.digest("SHA-256", data);
+      return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    function toBase64Unicode(text) {
+      return btoa(unescape(encodeURIComponent(text)));
+    }
+
+    function fromBase64Unicode(text) {
+      return decodeURIComponent(escape(atob(text)));
+    }
+
+    function setActiveSettingsTab(tabName) {
+      const isSync = tabName === "sync";
+      document.getElementById("settingsTab").classList.toggle("active", !isSync);
+      document.getElementById("syncTab").classList.toggle("active", isSync);
+      document.getElementById("settingsTabBtn").classList.toggle("active", !isSync);
+      document.getElementById("syncTabBtn").classList.toggle("active", isSync);
+      document.getElementById("settingsTabBtn").setAttribute("aria-selected", String(!isSync));
+      document.getElementById("syncTabBtn").setAttribute("aria-selected", String(isSync));
     }
 
     async function copyTextToClipboard(text) {
@@ -1177,7 +1278,11 @@
       settingsPanel.classList.toggle("open");
       const isOpen = settingsPanel.classList.contains("open");
       settingsBtn.setAttribute("aria-expanded", String(isOpen));
+      if (isOpen) setActiveSettingsTab("settings");
     });
+
+    document.getElementById("settingsTabBtn").addEventListener("click", () => setActiveSettingsTab("settings"));
+    document.getElementById("syncTabBtn").addEventListener("click", () => setActiveSettingsTab("sync"));
 
     document.getElementById("showExplanationsToggle").addEventListener("change", (event) => {
       state.settings.showExplanations = event.target.checked;
@@ -1275,6 +1380,32 @@
       writeStorageText(STORAGE_KEYS.syncDataInput, event.target.value.trim());
     });
 
+    document.getElementById("syncPasswordInput").addEventListener("input", (event) => {
+      writeStorageText(STORAGE_KEYS.syncPassword, event.target.value);
+    });
+
+    const syncPrefMap = {
+      syncShareSettings: "shareSettings",
+      syncShareTheme: "shareTheme",
+      syncShareProgress: "shareProgress",
+      syncShareAnswers: "shareAnswers",
+      syncShareOrder: "shareOrder",
+      syncShareChoiceOrder: "shareChoiceOrder",
+      syncShareQuestionBank: "shareQuestionBank",
+      syncShareSavedQuizzes: "shareSavedQuizzes",
+      syncShareHtmlDraft: "shareHtmlDraft",
+      syncShareAnswerFixDraft: "shareAnswerFixDraft",
+      syncShareSyncDraft: "shareSyncDraft"
+    };
+
+    Object.entries(syncPrefMap).forEach(([elementId, prefKey]) => {
+      document.getElementById(elementId).addEventListener("change", (event) => {
+        state.settings.syncPrefs = normalizeSyncPrefs(state.settings.syncPrefs);
+        state.settings.syncPrefs[prefKey] = event.target.checked;
+        saveSettings();
+      });
+    });
+
     document.getElementById("loadQuestionsHtmlBtn").addEventListener("click", () => {
       const html = document.getElementById("questionsHtmlInput").value;
       try {
@@ -1290,28 +1421,58 @@
     document.getElementById("deleteSavedQuizBtn").addEventListener("click", deleteSavedQuizSnapshot);
 
     document.getElementById("createSyncCodeBtn").addEventListener("click", async () => {
+      const password = document.getElementById("syncPasswordInput").value;
+      if (!password) {
+        setSyncStatus("Enter a sync password first.", true);
+        return;
+      }
+
+      const syncPrefs = normalizeSyncPrefs(state.settings.syncPrefs);
       const payload = {
-        settings: state.settings,
-        answers: state.answers,
-        locked: state.locked,
-        score: state.score,
-        answered: state.answered,
-        order: state.order,
-        choiceOrder: state.choiceOrder,
-        questionsBank,
-        savedQuizzes: getSavedQuizzes(),
-        questionsHtmlInput: document.getElementById("questionsHtmlInput").value,
-        answerFixInput: document.getElementById("answerFixInput").value,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        syncPrefs
       };
 
+      if (syncPrefs.shareSettings) {
+        payload.settings = {
+          showExplanations: state.settings.showExplanations,
+          shuffleOnReset: state.settings.shuffleOnReset,
+          compactMode: state.settings.compactMode,
+          shuffleOptions: state.settings.shuffleOptions,
+          instantFeedbackEnabled: state.settings.instantFeedbackEnabled,
+          fancyButtons: state.settings.fancyButtons
+        };
+      }
+      if (syncPrefs.shareTheme) {
+        payload.theme = {
+          titleText: state.settings.titleText,
+          titleStyle: state.settings.titleStyle,
+          nightMode: state.settings.nightMode,
+          dayTheme: state.settings.dayTheme,
+          nightTheme: state.settings.nightTheme
+        };
+      }
+      if (syncPrefs.shareProgress) {
+        payload.progress = { score: state.score, answered: state.answered };
+      }
+      if (syncPrefs.shareAnswers) { payload.answers = state.answers; payload.locked = state.locked; }
+      if (syncPrefs.shareOrder) payload.order = state.order;
+      if (syncPrefs.shareChoiceOrder) payload.choiceOrder = state.choiceOrder;
+      if (syncPrefs.shareQuestionBank) payload.questionsBank = questionsBank;
+      if (syncPrefs.shareSavedQuizzes) payload.savedQuizzes = getSavedQuizzes();
+      if (syncPrefs.shareHtmlDraft) payload.questionsHtmlInput = document.getElementById("questionsHtmlInput").value;
+      if (syncPrefs.shareAnswerFixDraft) payload.answerFixInput = document.getElementById("answerFixInput").value;
+
       try {
-        const code = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+        const salt = crypto.randomUUID();
+        const passHash = await hashPassword(password, salt);
+        const code = toBase64Unicode(JSON.stringify({ salt, passHash, payload }));
         const input = document.getElementById("syncDataInput");
         input.value = code;
         writeStorageText(STORAGE_KEYS.syncDataInput, code);
+        writeStorageText(STORAGE_KEYS.syncPassword, password);
         if (await copyTextToClipboard(code)) {
-          setSyncStatus("Sync code created and copied.");
+          setSyncStatus("Password-protected sync code created and copied.");
         } else {
           setSyncStatus("Sync code created. Copy it from the input box.");
         }
@@ -1320,58 +1481,88 @@
       }
     });
 
-    document.getElementById("loadSyncCodeBtn").addEventListener("click", () => {
+    document.getElementById("loadSyncCodeBtn").addEventListener("click", async () => {
       const raw = document.getElementById("syncDataInput").value.trim();
+      const password = document.getElementById("syncPasswordInput").value;
       if (!raw) {
         setSyncStatus("Paste a sync code first.", true);
         return;
       }
+      if (!password) {
+        setSyncStatus("Enter the sync password used to create this code.", true);
+        return;
+      }
 
       try {
-        const decoded = decodeURIComponent(escape(atob(raw)));
-        const parsed = JSON.parse(decoded);
-        if (!parsed || typeof parsed !== "object") throw new Error("Invalid payload");
+        const decoded = fromBase64Unicode(raw);
+        const envelope = JSON.parse(decoded);
+        if (!envelope || typeof envelope !== "object") throw new Error("Invalid payload");
 
-        if (isValidQuestionBank(parsed.questionsBank)) {
-          questionsBank = parsed.questionsBank.map((item) => ({ ...item, choices: [...item.choices] }));
+        const { salt, passHash, payload } = envelope;
+        if (!salt || !passHash || !payload || typeof payload !== "object") throw new Error("Invalid payload");
+        const computedHash = await hashPassword(password, salt);
+        if (computedHash !== passHash) {
+          setSyncStatus("Incorrect sync password.", true);
+          return;
+        }
+
+        if (isValidQuestionBank(payload.questionsBank)) {
+          questionsBank = payload.questionsBank.map((item) => ({ ...item, choices: [...item.choices] }));
           writeStorageJson(STORAGE_KEYS.questionsBank, questionsBank);
         }
 
-        if (parsed.settings && typeof parsed.settings === "object") {
-          state.settings = { ...DEFAULT_SETTINGS, ...parsed.settings };
-          state.settings.dayTheme = {
-            bg: normalizeHexColor(state.settings.dayTheme?.bg, DEFAULT_THEME.bg),
-            surfaceTint: normalizeHexColor(state.settings.dayTheme?.surfaceTint, DEFAULT_THEME.surfaceTint)
-          };
-          state.settings.nightTheme = {
-            bg: normalizeHexColor(state.settings.nightTheme?.bg, NIGHT_THEME.bg),
-            surfaceTint: normalizeHexColor(state.settings.nightTheme?.surfaceTint, NIGHT_THEME.surfaceTint)
-          };
-          saveSettings();
+        if (payload.settings && typeof payload.settings === "object") {
+          state.settings = { ...state.settings, ...payload.settings };
         }
 
-        if (parsed.answers && typeof parsed.answers === "object") state.answers = { ...parsed.answers };
-        if (parsed.locked && typeof parsed.locked === "object") state.locked = { ...parsed.locked };
-        if (typeof parsed.score === "number") state.score = parsed.score;
-        if (typeof parsed.answered === "number") state.answered = parsed.answered;
-        if (Array.isArray(parsed.order)) state.order = [...parsed.order];
-        if (parsed.choiceOrder && typeof parsed.choiceOrder === "object") state.choiceOrder = { ...parsed.choiceOrder };
-
-        if (parsed.savedQuizzes && typeof parsed.savedQuizzes === "object") {
-          writeStorageJson(STORAGE_KEYS.savedQuizzes, parsed.savedQuizzes);
+        if (payload.theme && typeof payload.theme === "object") {
+          state.settings.titleText = clampText(payload.theme.titleText || state.settings.titleText, 120);
+          state.settings.titleStyle = payload.theme.titleStyle in TITLE_STYLE_PRESETS ? payload.theme.titleStyle : state.settings.titleStyle;
+          if (typeof payload.theme.nightMode === "boolean") state.settings.nightMode = payload.theme.nightMode;
+          if (payload.theme.dayTheme && typeof payload.theme.dayTheme === "object") {
+            state.settings.dayTheme = {
+              bg: normalizeHexColor(payload.theme.dayTheme.bg, state.settings.dayTheme.bg),
+              surfaceTint: normalizeHexColor(payload.theme.dayTheme.surfaceTint, state.settings.dayTheme.surfaceTint)
+            };
+          }
+          if (payload.theme.nightTheme && typeof payload.theme.nightTheme === "object") {
+            state.settings.nightTheme = {
+              bg: normalizeHexColor(payload.theme.nightTheme.bg, state.settings.nightTheme.bg),
+              surfaceTint: normalizeHexColor(payload.theme.nightTheme.surfaceTint, state.settings.nightTheme.surfaceTint)
+            };
+          }
         }
 
-        if (typeof parsed.questionsHtmlInput === "string") {
-          document.getElementById("questionsHtmlInput").value = parsed.questionsHtmlInput.slice(0, MAX_HTML_INPUT_LENGTH);
+        if (payload.answers && typeof payload.answers === "object") state.answers = { ...payload.answers };
+        if (payload.locked && typeof payload.locked === "object") state.locked = { ...payload.locked };
+        if (payload.progress && typeof payload.progress === "object") {
+          if (typeof payload.progress.score === "number") state.score = payload.progress.score;
+          if (typeof payload.progress.answered === "number") state.answered = payload.progress.answered;
+        }
+        if (Array.isArray(payload.order)) state.order = [...payload.order];
+        if (payload.choiceOrder && typeof payload.choiceOrder === "object") state.choiceOrder = { ...payload.choiceOrder };
+
+        if (payload.savedQuizzes && typeof payload.savedQuizzes === "object") {
+          writeStorageJson(STORAGE_KEYS.savedQuizzes, payload.savedQuizzes);
+        }
+
+        if (typeof payload.questionsHtmlInput === "string") {
+          document.getElementById("questionsHtmlInput").value = payload.questionsHtmlInput.slice(0, MAX_HTML_INPUT_LENGTH);
           writeStorageText(STORAGE_KEYS.questionsHtmlInput, document.getElementById("questionsHtmlInput").value);
         }
 
-        if (typeof parsed.answerFixInput === "string") {
-          document.getElementById("answerFixInput").value = parsed.answerFixInput.slice(0, MAX_ANSWER_FIX_INPUT_LENGTH);
+        if (typeof payload.answerFixInput === "string") {
+          document.getElementById("answerFixInput").value = payload.answerFixInput.slice(0, MAX_ANSWER_FIX_INPUT_LENGTH);
           writeStorageText(STORAGE_KEYS.answerFixInput, document.getElementById("answerFixInput").value);
         }
 
-        writeStorageText(STORAGE_KEYS.syncDataInput, raw);
+        const incomingPrefs = normalizeSyncPrefs(payload.syncPrefs);
+        state.settings.syncPrefs = incomingPrefs;
+        if (incomingPrefs.shareSyncDraft) {
+          writeStorageText(STORAGE_KEYS.syncDataInput, raw);
+        }
+        writeStorageText(STORAGE_KEYS.syncPassword, password);
+        saveSettings();
         saveProgress();
         applyTitleStyle(state.settings.titleStyle || "classic");
         setNightMode(state.settings.nightMode);
