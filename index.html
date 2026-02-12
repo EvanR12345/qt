@@ -229,7 +229,6 @@
         titleText: "Choice Title.",
         instantFeedbackEnabled: true,
         nightMode: false
-        instantFeedbackEnabled: true
       }
     };
 
@@ -449,7 +448,7 @@
         const left = document.createElement("div");
         const title = document.createElement("p");
         title.className = "qtitle";
-        title.textContent = `Q${idx + 1}. ${item.q}`;
+        title.textContent = `Q${idx + 1}.`;
         left.appendChild(title);
 
         const tag = document.createElement("span");
@@ -461,7 +460,7 @@
 
         const prompt = document.createElement("div");
         prompt.className = "prompt";
-        prompt.innerHTML = "";
+        prompt.textContent = item.q;
 
         const opts = document.createElement("div");
         opts.className = "opts";
