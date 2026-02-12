@@ -129,6 +129,7 @@
       </label>
       <div class="settings-actions">
         <button id="resetColorsBtn" type="button">Reset Colours</button>
+        <button id="clearSavedDataBtn" type="button">Clear Saved Data</button>
       </div>
 
       <div class="settings-actions" style="margin-top:12px;">
@@ -174,7 +175,7 @@
         <p class="settings-title" style="margin-top:12px;">Fix Answer Key</p>
         <label class="setting column">
           <span>Type a correction (example: question 34 is wrong it should be c)</span>
-          <input id="answerFixInput" type="text" placeholder="question 34 is wrong it should be c" />
+          <input id="answerFixInput" type="text" placeholder="question 34 is wrong it should be c" maxlength="120" autocomplete="off" autocapitalize="off" spellcheck="false" />
         </label>
         <div class="settings-actions">
           <button id="applyAnswerFixBtn" type="button">Apply Answer Fix</button>
@@ -190,7 +191,7 @@
   </div>
 
   <script>
-    let questionsBank = [
+    const DEFAULT_QUESTIONS = [
       {
         topic: "math",
         q: "What is 3 + 2?",
@@ -214,6 +215,21 @@
       }
     ];
 
+    let questionsBank = DEFAULT_QUESTIONS.map((q) => ({
+      ...q,
+      choices: [...q.choices]
+    }));
+
+    const DEFAULT_SETTINGS = {
+      showExplanations: true,
+      shuffleOnReset: false,
+      compactMode: false,
+      shuffleOptions: false,
+      titleText: "Choice Title.",
+      instantFeedbackEnabled: true,
+      nightMode: false
+    };
+
     let state = {
       order: [],
       answers: {},
@@ -221,16 +237,7 @@
       score: 0,
       answered: 0,
       choiceOrder: {},
-      settings: {
-        showExplanations: true,
-        shuffleOnReset: false,
-        compactMode: false,
-        shuffleOptions: false,
-        titleText: "Choice Title.",
-        instantFeedbackEnabled: true,
-        nightMode: false
-        instantFeedbackEnabled: true
-      }
+      settings: { ...DEFAULT_SETTINGS }
     };
 
 
@@ -238,6 +245,7 @@
     const MAX_QUESTIONS = 200;
     const MAX_CHOICES_PER_QUESTION = 20;
     const MAX_TEXT_LENGTH = 500;
+    const MAX_ANSWER_FIX_INPUT_LENGTH = 120;
     const FORBIDDEN_TAGS = new Set(["script", "iframe", "object", "embed", "link", "style", "meta", "base", "form"]);
     const FORBIDDEN_ATTR_PREFIXES = ["on"];
     const FORBIDDEN_ATTR_NAMES = new Set(["srcdoc"]);
@@ -249,6 +257,177 @@
       bg: "#0f172a",
       surfaceTint: "#1e293b"
     };
+    const STORAGE_KEYS = {
+      settings: "qt.quiz.settings.v1",
+      questionsHtmlInput: "qt.quiz.questionsHtmlInput.v1",
+      answerFixInput: "qt.quiz.answerFixInput.v1",
+      questionsBank: "qt.quiz.questionsBank.v1",
+      progress: "qt.quiz.progress.v1"
+    };
+
+    function readStorageJson(key) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch {
+        return null;
+      }
+    }
+
+    function writeStorageJson(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch {
+        // Ignore storage quota/privacy mode failures.
+      }
+    }
+
+    function writeStorageText(key, value) {
+      try {
+        localStorage.setItem(key, String(value || ""));
+      } catch {
+        // Ignore storage quota/privacy mode failures.
+      }
+    }
+
+    function isValidQuestionBank(candidate) {
+      if (!Array.isArray(candidate) || !candidate.length || candidate.length > MAX_QUESTIONS) return false;
+      return candidate.every((item) => {
+        if (!item || typeof item !== "object") return false;
+        if (!Array.isArray(item.choices) || item.choices.length < 2 || item.choices.length > MAX_CHOICES_PER_QUESTION) return false;
+        if (!Number.isInteger(item.answer) || item.answer < 0 || item.answer >= item.choices.length) return false;
+        return typeof item.topic === "string" && typeof item.q === "string" && typeof item.explain === "string";
+      });
+    }
+
+    function saveSettings() {
+      writeStorageJson(STORAGE_KEYS.settings, state.settings);
+    }
+
+    function saveQuestionsBank() {
+      writeStorageJson(STORAGE_KEYS.questionsBank, questionsBank);
+    }
+
+    function isValidProgress(candidate) {
+      if (!candidate || typeof candidate !== "object") return false;
+      const { answers, locked, score, answered, order, choiceOrder } = candidate;
+      if (!answers || typeof answers !== "object") return false;
+      if (!locked || typeof locked !== "object") return false;
+      if (!Number.isInteger(score) || score < 0) return false;
+      if (!Number.isInteger(answered) || answered < 0) return false;
+      if (!Array.isArray(order) || order.length !== questionsBank.length) return false;
+      if (!choiceOrder || typeof choiceOrder !== "object") return false;
+
+      const total = questionsBank.length;
+      const inRange = (n) => Number.isInteger(n) && n >= 0 && n < total;
+      if (!order.every(inRange)) return false;
+      if (new Set(order).size !== total) return false;
+
+      for (const [qidStr, choiceIdx] of Object.entries(answers)) {
+        const qid = Number(qidStr);
+        if (!inRange(qid)) return false;
+        if (!Number.isInteger(choiceIdx) || choiceIdx < 0 || choiceIdx >= questionsBank[qid].choices.length) return false;
+      }
+
+      for (const qidStr of Object.keys(locked)) {
+        const qid = Number(qidStr);
+        if (!inRange(qid)) return false;
+      }
+
+      for (const [qidStr, arr] of Object.entries(choiceOrder)) {
+        const qid = Number(qidStr);
+        if (!inRange(qid) || !Array.isArray(arr) || arr.length !== questionsBank[qid].choices.length) return false;
+        if (!arr.every((idx) => Number.isInteger(idx) && idx >= 0 && idx < questionsBank[qid].choices.length)) return false;
+      }
+
+      return true;
+    }
+
+    function saveProgress() {
+      writeStorageJson(STORAGE_KEYS.progress, {
+        answers: state.answers,
+        locked: state.locked,
+        score: state.score,
+        answered: state.answered,
+        order: state.order,
+        choiceOrder: state.choiceOrder
+      });
+    }
+
+    function hydrateFromStorage() {
+      const storedSettings = readStorageJson(STORAGE_KEYS.settings);
+      if (storedSettings && typeof storedSettings === "object") {
+        state.settings = { ...state.settings, ...storedSettings };
+      }
+
+      const storedQuestionsBank = readStorageJson(STORAGE_KEYS.questionsBank);
+      if (isValidQuestionBank(storedQuestionsBank)) {
+        questionsBank = storedQuestionsBank.map((q) => ({
+          topic: clampText(q.topic, 80),
+          q: clampText(q.q),
+          choices: q.choices.map((choice) => clampText(choice)).filter(Boolean),
+          answer: q.answer,
+          explain: clampText(q.explain)
+        }));
+      }
+
+      const htmlDraft = localStorage.getItem(STORAGE_KEYS.questionsHtmlInput);
+      if (typeof htmlDraft === "string") {
+        document.getElementById("questionsHtmlInput").value = htmlDraft.slice(0, MAX_HTML_INPUT_LENGTH);
+      }
+
+      const answerFixDraft = localStorage.getItem(STORAGE_KEYS.answerFixInput);
+      if (typeof answerFixDraft === "string") {
+        document.getElementById("answerFixInput").value = answerFixDraft.slice(0, MAX_ANSWER_FIX_INPUT_LENGTH);
+      }
+    }
+
+    function hydrateProgressFromStorage() {
+      const storedProgress = readStorageJson(STORAGE_KEYS.progress);
+      if (!isValidProgress(storedProgress)) return;
+      state.answers = { ...storedProgress.answers };
+      state.locked = { ...storedProgress.locked };
+      state.score = storedProgress.score;
+      state.answered = storedProgress.answered;
+      state.order = [...storedProgress.order];
+      state.choiceOrder = { ...storedProgress.choiceOrder };
+    }
+
+    function clearSavedData() {
+      const ok = window.confirm("Confirm resetting all website data? This clears saved settings, drafts, custom questions, and progress.");
+      if (!ok) return;
+
+      Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
+
+      questionsBank = DEFAULT_QUESTIONS.map((q) => ({ ...q, choices: [...q.choices] }));
+      state.settings = { ...DEFAULT_SETTINGS };
+      state.answers = {};
+      state.locked = {};
+      state.score = 0;
+      state.answered = 0;
+      state.choiceOrder = {};
+
+      initOrder();
+      syncSettingsControls();
+      document.getElementById("questionsHtmlInput").value = "";
+      document.getElementById("answerFixInput").value = "";
+      setStatus("Saved website data cleared.");
+      setAnswerFixStatus("Saved answer-fix data cleared.");
+      updateQuizTitle();
+      setNightMode(state.settings.nightMode);
+      render();
+    }
+
+    function syncSettingsControls() {
+      document.getElementById("showExplanationsToggle").checked = !!state.settings.showExplanations;
+      document.getElementById("shuffleOnResetToggle").checked = !!state.settings.shuffleOnReset;
+      document.getElementById("compactModeToggle").checked = !!state.settings.compactMode;
+      document.getElementById("shuffleOptionsToggle").checked = !!state.settings.shuffleOptions;
+      document.getElementById("instantFeedbackToggle").checked = !!state.settings.instantFeedbackEnabled;
+      document.getElementById("nightModeToggle").checked = !!state.settings.nightMode;
+      document.getElementById("titleInput").value = state.settings.titleText || "Choice Title.";
+    }
 
     function setStatus(message, isError = false) {
       const status = document.getElementById("htmlLoadStatus");
@@ -268,6 +447,12 @@
       const text = String(raw || "").trim();
       if (!text) {
         throw new Error("Enter a correction like: question 3 should be c");
+      }
+      if (text.length > MAX_ANSWER_FIX_INPUT_LENGTH) {
+        throw new Error(`Correction is too long. Max ${MAX_ANSWER_FIX_INPUT_LENGTH} characters.`);
+      }
+      if (/[<>`]/.test(text)) {
+        throw new Error("Invalid characters detected. Use plain text only.");
       }
 
       const qMatch = text.match(/question\s*(\d+)/i);
@@ -314,10 +499,23 @@
         throw new Error(`Answer must be within A-${String.fromCharCode(64 + item.choices.length)} for question ${questionNumber}.`);
       }
 
+      const previousAnswer = item.answer;
       item.answer = answerIdx;
-      resetAll();
+
+      if (state.locked[qid]) {
+        const chosen = state.answers[qid];
+        const wasCorrect = chosen === previousAnswer;
+        const isCorrect = chosen === answerIdx;
+        if (wasCorrect && !isCorrect) state.score = Math.max(0, state.score - 1);
+        if (!wasCorrect && isCorrect) state.score += 1;
+        showFeedback(qid);
+        updateScoreUI();
+      }
+
       const answerLetter = String.fromCharCode(65 + answerIdx);
-      setAnswerFixStatus(`Updated question ${questionNumber} answer to ${answerLetter}. Answers were reset.`);
+      saveQuestionsBank();
+      saveProgress();
+      setAnswerFixStatus(`Updated question ${questionNumber} answer to ${answerLetter}. Existing answers were kept.`);
     }
 
     function clampText(text, maxLen = MAX_TEXT_LENGTH) {
@@ -406,6 +604,7 @@
       bgInput.value = theme.bg;
       tintInput.value = theme.surfaceTint;
       applyThemeColors(theme);
+      saveSettings();
     }
 
     function shuffle(array) {
@@ -449,7 +648,7 @@
         const left = document.createElement("div");
         const title = document.createElement("p");
         title.className = "qtitle";
-        title.textContent = `Q${idx + 1}. ${item.q}`;
+        title.textContent = `Q${idx + 1}.`;
         left.appendChild(title);
 
         const tag = document.createElement("span");
@@ -461,7 +660,7 @@
 
         const prompt = document.createElement("div");
         prompt.className = "prompt";
-        prompt.innerHTML = "";
+        prompt.textContent = item.q;
 
         const opts = document.createElement("div");
         opts.className = "opts";
@@ -530,6 +729,7 @@
       if (state.locked[qid]) return;
 
       state.answers[qid] = choiceIdx;
+      saveProgress();
       if (state.settings.instantFeedbackEnabled) {
         gradeAnswer(qid);
         return;
@@ -561,6 +761,7 @@
 
       const checkBtn = document.getElementById(`check_${qid}`);
       if (checkBtn) checkBtn.disabled = true;
+      saveProgress();
     }
 
     function showFeedback(qid) {
@@ -618,6 +819,7 @@
       state.score = 0;
       state.answered = 0;
       state.choiceOrder = {};
+      saveProgress();
       render();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -696,6 +898,7 @@
       });
 
       questionsBank = parsed;
+      saveQuestionsBank();
       initOrder();
       resetAll();
     }
@@ -717,20 +920,24 @@
 
     document.getElementById("showExplanationsToggle").addEventListener("change", (event) => {
       state.settings.showExplanations = event.target.checked;
+      saveSettings();
       render();
     });
 
     document.getElementById("shuffleOnResetToggle").addEventListener("change", (event) => {
       state.settings.shuffleOnReset = event.target.checked;
+      saveSettings();
     });
 
     document.getElementById("compactModeToggle").addEventListener("change", (event) => {
       state.settings.compactMode = event.target.checked;
+      saveSettings();
       render();
     });
 
     document.getElementById("shuffleOptionsToggle").addEventListener("change", (event) => {
       state.settings.shuffleOptions = event.target.checked;
+      saveSettings();
       state.choiceOrder = {};
       render();
     });
@@ -738,11 +945,13 @@
     const titleInput = document.getElementById("titleInput");
     titleInput.addEventListener("input", (event) => {
       state.settings.titleText = event.target.value;
+      saveSettings();
       updateQuizTitle();
     });
 
     document.getElementById("instantFeedbackToggle").addEventListener("change", (event) => {
       state.settings.instantFeedbackEnabled = event.target.checked;
+      saveSettings();
       updateQuizTitle();
       render();
     });
@@ -774,6 +983,7 @@
 
     document.getElementById("nightModeToggle").addEventListener("change", (event) => {
       setNightMode(event.target.checked);
+      saveSettings();
     });
 
     document.getElementById("resetColorsBtn").addEventListener("click", () => {
@@ -781,6 +991,16 @@
       bgColorInput.value = theme.bg;
       surfaceTintInput.value = theme.surfaceTint;
       applyThemeColors(theme);
+    });
+
+    document.getElementById("clearSavedDataBtn").addEventListener("click", clearSavedData);
+
+    document.getElementById("questionsHtmlInput").addEventListener("input", (event) => {
+      writeStorageText(STORAGE_KEYS.questionsHtmlInput, event.target.value.slice(0, MAX_HTML_INPUT_LENGTH));
+    });
+
+    document.getElementById("answerFixInput").addEventListener("input", (event) => {
+      writeStorageText(STORAGE_KEYS.answerFixInput, event.target.value.slice(0, MAX_ANSWER_FIX_INPUT_LENGTH));
     });
 
     document.getElementById("loadQuestionsHtmlBtn").addEventListener("click", () => {
@@ -795,6 +1015,7 @@
 
     document.getElementById("applyAnswerFixBtn").addEventListener("click", () => {
       const raw = document.getElementById("answerFixInput").value;
+      writeStorageText(STORAGE_KEYS.answerFixInput, raw);
       try {
         applyAnswerFixFromInput(raw);
       } catch (err) {
@@ -847,9 +1068,11 @@ Format
       }
     });
 
+    hydrateFromStorage();
+    syncSettingsControls();
     initOrder();
+    hydrateProgressFromStorage();
     updateQuizTitle();
-    document.getElementById("nightModeToggle").checked = state.settings.nightMode;
     setNightMode(state.settings.nightMode);
     render();
   </script>
