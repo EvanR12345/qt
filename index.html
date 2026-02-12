@@ -188,17 +188,17 @@
           <input id="syncPasswordInput" type="password" placeholder="Enter password required for sync" autocomplete="off" spellcheck="false" />
         </label>
         <div class="sync-grid">
-          <label class="setting"><input id="syncShareSettings" type="checkbox" checked /> Share quiz settings</label>
-          <label class="setting"><input id="syncShareTheme" type="checkbox" checked /> Share theme + title style</label>
-          <label class="setting"><input id="syncShareProgress" type="checkbox" checked /> Share score + answered count</label>
-          <label class="setting"><input id="syncShareAnswers" type="checkbox" checked /> Share selected answers</label>
-          <label class="setting"><input id="syncShareOrder" type="checkbox" checked /> Share question order</label>
-          <label class="setting"><input id="syncShareChoiceOrder" type="checkbox" checked /> Share option order</label>
+          <label class="setting"><input id="syncShareSettings" type="checkbox" /> Share quiz settings</label>
+          <label class="setting"><input id="syncShareTheme" type="checkbox" /> Share theme + title style</label>
+          <label class="setting"><input id="syncShareProgress" type="checkbox" /> Share score + answered count</label>
+          <label class="setting"><input id="syncShareAnswers" type="checkbox" /> Share selected answers</label>
+          <label class="setting"><input id="syncShareOrder" type="checkbox" /> Share question order</label>
+          <label class="setting"><input id="syncShareChoiceOrder" type="checkbox" /> Share option order</label>
           <label class="setting"><input id="syncShareQuestionBank" type="checkbox" checked /> Share loaded questions</label>
-          <label class="setting"><input id="syncShareSavedQuizzes" type="checkbox" checked /> Share saved quiz list</label>
+          <label class="setting"><input id="syncShareSavedQuizzes" type="checkbox" /> Share saved quiz list</label>
           <label class="setting"><input id="syncShareHtmlDraft" type="checkbox" checked /> Share HTML import draft</label>
-          <label class="setting"><input id="syncShareAnswerFixDraft" type="checkbox" checked /> Share answer-fix draft</label>
-          <label class="setting"><input id="syncShareSyncDraft" type="checkbox" /> Keep pasted sync code text</label>
+          <label class="setting"><input id="syncShareAnswerFixDraft" type="checkbox" checked /> Share answer-fix draft (includes fixed questions list)</label>
+          <label class="setting"><input id="syncShareSyncDraft" type="checkbox" checked /> Keep pasted sync code text</label>
         </div>
         <label class="setting column">
           <span>Paste a sync code from another device</span>
@@ -269,6 +269,10 @@
           <button id="applyAnswerFixBtn" type="button">Apply Answer Fix</button>
           <span id="answerFixStatus" class="small"></span>
         </div>
+        <label class="setting column" style="margin-top:8px;">
+          <span>Fixed questions</span>
+          <textarea id="answerFixHistoryPreview" readonly placeholder="No fixes applied yet."></textarea>
+        </label>
 
         <textarea id="clipboardPromptPreview" readonly aria-label="Clipboard prompt manual copy text"></textarea>
       </div>
@@ -321,17 +325,17 @@
       dayTheme: { bg: "#ffffff", surfaceTint: "#fafafa" },
       nightTheme: { bg: "#0f172a", surfaceTint: "#1e293b" },
       syncPrefs: {
-        shareSettings: true,
-        shareTheme: true,
-        shareProgress: true,
-        shareAnswers: true,
-        shareOrder: true,
-        shareChoiceOrder: true,
+        shareSettings: false,
+        shareTheme: false,
+        shareProgress: false,
+        shareAnswers: false,
+        shareOrder: false,
+        shareChoiceOrder: false,
         shareQuestionBank: true,
-        shareSavedQuizzes: true,
+        shareSavedQuizzes: false,
         shareHtmlDraft: true,
         shareAnswerFixDraft: true,
-        shareSyncDraft: false
+        shareSyncDraft: true
       }
     };
 
@@ -342,6 +346,7 @@
       score: 0,
       answered: 0,
       choiceOrder: {},
+      answerFixHistory: [],
       settings: { ...DEFAULT_SETTINGS }
     };
 
@@ -366,6 +371,7 @@
       settings: "qt.quiz.settings.v1",
       questionsHtmlInput: "qt.quiz.questionsHtmlInput.v1",
       answerFixInput: "qt.quiz.answerFixInput.v1",
+      answerFixHistory: "qt.quiz.answerFixHistory.v1",
       questionsBank: "qt.quiz.questionsBank.v1",
       progress: "qt.quiz.progress.v1",
       savedQuizzes: "qt.quiz.savedQuizzes.v1",
@@ -512,6 +518,11 @@
         document.getElementById("answerFixInput").value = answerFixDraft.slice(0, MAX_ANSWER_FIX_INPUT_LENGTH);
       }
 
+      const storedAnswerFixHistory = readStorageJson(STORAGE_KEYS.answerFixHistory);
+      if (Array.isArray(storedAnswerFixHistory)) {
+        state.answerFixHistory = storedAnswerFixHistory.filter((line) => typeof line === "string").slice(0, 100);
+      }
+
       const syncDraft = localStorage.getItem(STORAGE_KEYS.syncDataInput);
       if (typeof syncDraft === "string") {
         document.getElementById("syncDataInput").value = syncDraft;
@@ -566,15 +577,18 @@
       state.score = 0;
       state.answered = 0;
       state.choiceOrder = {};
+      state.answerFixHistory = [];
 
       initOrder();
       syncSettingsControls();
       document.getElementById("questionsHtmlInput").value = "";
       document.getElementById("answerFixInput").value = "";
+      document.getElementById("answerFixHistoryPreview").value = "";
       document.getElementById("saveQuizTitleInput").value = "";
       updateSavedQuizSelect();
       setStatus("Saved website data cleared.");
       setAnswerFixStatus("Saved answer-fix data cleared.");
+      renderAnswerFixHistory();
       updateQuizTitle();
       setNightMode(state.settings.nightMode);
       render();
@@ -736,6 +750,16 @@
       status.classList.toggle("status-ok", !isError);
     }
 
+    function renderAnswerFixHistory() {
+      const preview = document.getElementById("answerFixHistoryPreview");
+      if (!preview) return;
+      if (!Array.isArray(state.answerFixHistory) || state.answerFixHistory.length === 0) {
+        preview.value = "No fixes applied yet.";
+        return;
+      }
+      preview.value = state.answerFixHistory.join("\n");
+    }
+
     async function hashPassword(password, salt) {
       const enc = new TextEncoder();
       const data = enc.encode(`${salt}:${password}`);
@@ -849,6 +873,11 @@
       }
 
       const answerLetter = String.fromCharCode(65 + answerIdx);
+      state.answerFixHistory = Array.isArray(state.answerFixHistory) ? state.answerFixHistory : [];
+      state.answerFixHistory.unshift(`Q${questionNumber}: ${String.fromCharCode(65 + previousAnswer)} → ${answerLetter}`);
+      state.answerFixHistory = state.answerFixHistory.slice(0, 100);
+      writeStorageJson(STORAGE_KEYS.answerFixHistory, state.answerFixHistory);
+      renderAnswerFixHistory();
       saveQuestionsBank();
       saveProgress();
       setAnswerFixStatus(`Updated question ${questionNumber} answer to ${answerLetter}. Existing answers were kept.`);
@@ -1461,7 +1490,10 @@
       if (syncPrefs.shareQuestionBank) payload.questionsBank = questionsBank;
       if (syncPrefs.shareSavedQuizzes) payload.savedQuizzes = getSavedQuizzes();
       if (syncPrefs.shareHtmlDraft) payload.questionsHtmlInput = document.getElementById("questionsHtmlInput").value;
-      if (syncPrefs.shareAnswerFixDraft) payload.answerFixInput = document.getElementById("answerFixInput").value;
+      if (syncPrefs.shareAnswerFixDraft) {
+        payload.answerFixInput = document.getElementById("answerFixInput").value;
+        payload.answerFixHistory = Array.isArray(state.answerFixHistory) ? state.answerFixHistory.slice(0, 100) : [];
+      }
 
       try {
         const salt = crypto.randomUUID();
@@ -1556,6 +1588,11 @@
           writeStorageText(STORAGE_KEYS.answerFixInput, document.getElementById("answerFixInput").value);
         }
 
+        if (Array.isArray(payload.answerFixHistory)) {
+          state.answerFixHistory = payload.answerFixHistory.filter((line) => typeof line === "string").slice(0, 100);
+          writeStorageJson(STORAGE_KEYS.answerFixHistory, state.answerFixHistory);
+        }
+
         const incomingPrefs = normalizeSyncPrefs(payload.syncPrefs);
         state.settings.syncPrefs = incomingPrefs;
         if (incomingPrefs.shareSyncDraft) {
@@ -1568,6 +1605,7 @@
         setNightMode(state.settings.nightMode);
         syncSettingsControls();
         updateSavedQuizSelect();
+        renderAnswerFixHistory();
         updateQuizTitle();
         render();
         setSyncStatus("Sync code loaded.");
@@ -1626,6 +1664,7 @@ Format
     syncSettingsControls();
     initOrder();
     hydrateProgressFromStorage();
+    renderAnswerFixHistory();
     updateQuizTitle();
     applyTitleStyle(state.settings.titleStyle || "classic");
     updateSavedQuizSelect();
