@@ -682,6 +682,7 @@
         titleStyle: state.settings.titleStyle,
         questionsBank,
         questionsHtmlInput: document.getElementById("questionsHtmlInput").value,
+        answerFixHistory: Array.isArray(state.answerFixHistory) ? state.answerFixHistory.slice(0, 100) : [],
         savedAt: new Date().toISOString()
       };
       writeStorageJson(STORAGE_KEYS.savedQuizzes, saved);
@@ -709,6 +710,12 @@
       document.getElementById("questionsHtmlInput").value = String(snapshot.questionsHtmlInput || "").slice(0, MAX_HTML_INPUT_LENGTH);
       writeStorageText(STORAGE_KEYS.questionsHtmlInput, document.getElementById("questionsHtmlInput").value);
       saveQuestionsBank();
+      state.answerFixHistory = Array.isArray(snapshot.answerFixHistory)
+        ? snapshot.answerFixHistory.filter((line) => typeof line === "string").slice(0, 100)
+        : [];
+      writeStorageJson(STORAGE_KEYS.answerFixHistory, state.answerFixHistory);
+      renderAnswerFixHistory();
+      setAnswerFixStatus(state.answerFixHistory.length ? "Loaded saved fixes for this quiz." : "No fixes applied yet.");
       resetAnswerFixHistoryForLoadedQuiz();
       saveSettings();
       applyTitleStyle(state.settings.titleStyle);
