@@ -68,6 +68,7 @@
     .title-row input[type="text"]{flex:1 1 360px; min-width:220px;}
     .title-row select{flex:1 1 220px; min-width:200px; border:1px solid var(--border); border-radius:10px; padding:9px 10px; background:var(--surface); color:var(--text); font-weight:600; box-shadow:inset 0 0 0 1px var(--accent-soft);}
     .settings-panel textarea{width:100%; min-height:150px; resize:vertical; border:1px solid var(--border); border-radius:10px; padding:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:12px; box-sizing:border-box;}
+    .sync-input{width:100%; border:1px solid var(--border); border-radius:10px; padding:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:12px; box-sizing:border-box;}
     .settings-actions{display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;}
     #clearSavedDataBtn{background:#dc2626; border-color:#b91c1c; color:#fff;}
     #clearSavedDataBtn:hover{background:#b91c1c;}
@@ -160,6 +161,17 @@
       <div class="settings-actions">
         <button id="restoreDefaultColorsBtn" type="button">Restore Default Colours</button>
         <button id="clearSavedDataBtn" type="button">Clear Saved Data</button>
+      </div>
+
+      <p class="settings-title" style="margin-top:12px;">Sync Progress + Settings</p>
+      <label class="setting column">
+        <span>Paste a sync code from another device</span>
+        <input id="syncDataInput" class="sync-input" type="text" placeholder="Paste sync code here" autocomplete="off" spellcheck="false" />
+      </label>
+      <div class="settings-actions">
+        <button id="createSyncCodeBtn" type="button">Create Sync Code</button>
+        <button id="loadSyncCodeBtn" type="button">Load Sync Code</button>
+        <span id="syncStatus" class="small"></span>
       </div>
 
       <div class="settings-actions" style="margin-top:12px;">
@@ -309,7 +321,8 @@
       answerFixInput: "qt.quiz.answerFixInput.v1",
       questionsBank: "qt.quiz.questionsBank.v1",
       progress: "qt.quiz.progress.v1",
-      savedQuizzes: "qt.quiz.savedQuizzes.v1"
+      savedQuizzes: "qt.quiz.savedQuizzes.v1",
+      syncDataInput: "qt.quiz.syncDataInput.v1"
     };
 
     const TITLE_STYLE_PRESETS = {
@@ -449,6 +462,11 @@
       if (typeof answerFixDraft === "string") {
         document.getElementById("answerFixInput").value = answerFixDraft.slice(0, MAX_ANSWER_FIX_INPUT_LENGTH);
       }
+
+      const syncDraft = localStorage.getItem(STORAGE_KEYS.syncDataInput);
+      if (typeof syncDraft === "string") {
+        document.getElementById("syncDataInput").value = syncDraft;
+      }
     }
 
     function hydrateProgressFromStorage() {
@@ -466,7 +484,7 @@
       const ok = window.confirm("Confirm resetting all website data? This clears saved settings, drafts, custom questions, progress, and local browser cache for this page.");
       if (!ok) return;
 
-      Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
+      localStorage.clear();
       sessionStorage.clear();
 
       try {
@@ -630,6 +648,13 @@
 
     function setAnswerFixStatus(message, isError = false) {
       const status = document.getElementById("answerFixStatus");
+      status.textContent = message;
+      status.classList.toggle("status-error", isError);
+      status.classList.toggle("status-ok", !isError);
+    }
+
+    function setSyncStatus(message, isError = false) {
+      const status = document.getElementById("syncStatus");
       status.textContent = message;
       status.classList.toggle("status-error", isError);
       status.classList.toggle("status-ok", !isError);
@@ -1228,6 +1253,10 @@
       writeStorageText(STORAGE_KEYS.answerFixInput, event.target.value.slice(0, MAX_ANSWER_FIX_INPUT_LENGTH));
     });
 
+    document.getElementById("syncDataInput").addEventListener("input", (event) => {
+      writeStorageText(STORAGE_KEYS.syncDataInput, event.target.value.trim());
+    });
+
     document.getElementById("loadQuestionsHtmlBtn").addEventListener("click", () => {
       const html = document.getElementById("questionsHtmlInput").value;
       try {
@@ -1241,6 +1270,103 @@
     document.getElementById("saveLoadedQuizBtn").addEventListener("click", saveLoadedQuizSnapshot);
     document.getElementById("loadSavedQuizBtn").addEventListener("click", loadSavedQuizSnapshot);
     document.getElementById("deleteSavedQuizBtn").addEventListener("click", deleteSavedQuizSnapshot);
+
+    document.getElementById("createSyncCodeBtn").addEventListener("click", async () => {
+      const payload = {
+        settings: state.settings,
+        answers: state.answers,
+        locked: state.locked,
+        score: state.score,
+        answered: state.answered,
+        order: state.order,
+        choiceOrder: state.choiceOrder,
+        questionsBank,
+        savedQuizzes: getSavedQuizzes(),
+        questionsHtmlInput: document.getElementById("questionsHtmlInput").value,
+        answerFixInput: document.getElementById("answerFixInput").value,
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        const code = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+        const input = document.getElementById("syncDataInput");
+        input.value = code;
+        writeStorageText(STORAGE_KEYS.syncDataInput, code);
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(code);
+          setSyncStatus("Sync code created and copied.");
+        } else {
+          setSyncStatus("Sync code created. Copy it from the input box.");
+        }
+      } catch {
+        setSyncStatus("Unable to create sync code.", true);
+      }
+    });
+
+    document.getElementById("loadSyncCodeBtn").addEventListener("click", () => {
+      const raw = document.getElementById("syncDataInput").value.trim();
+      if (!raw) {
+        setSyncStatus("Paste a sync code first.", true);
+        return;
+      }
+
+      try {
+        const decoded = decodeURIComponent(escape(atob(raw)));
+        const parsed = JSON.parse(decoded);
+        if (!parsed || typeof parsed !== "object") throw new Error("Invalid payload");
+
+        if (isValidQuestionBank(parsed.questionsBank)) {
+          questionsBank = parsed.questionsBank.map((item) => ({ ...item, choices: [...item.choices] }));
+          writeStorageJson(STORAGE_KEYS.questionsBank, questionsBank);
+        }
+
+        if (parsed.settings && typeof parsed.settings === "object") {
+          state.settings = { ...DEFAULT_SETTINGS, ...parsed.settings };
+          state.settings.dayTheme = {
+            bg: normalizeHexColor(state.settings.dayTheme?.bg, DEFAULT_THEME.bg),
+            surfaceTint: normalizeHexColor(state.settings.dayTheme?.surfaceTint, DEFAULT_THEME.surfaceTint)
+          };
+          state.settings.nightTheme = {
+            bg: normalizeHexColor(state.settings.nightTheme?.bg, NIGHT_THEME.bg),
+            surfaceTint: normalizeHexColor(state.settings.nightTheme?.surfaceTint, NIGHT_THEME.surfaceTint)
+          };
+          saveSettings();
+        }
+
+        if (parsed.answers && typeof parsed.answers === "object") state.answers = { ...parsed.answers };
+        if (parsed.locked && typeof parsed.locked === "object") state.locked = { ...parsed.locked };
+        if (typeof parsed.score === "number") state.score = parsed.score;
+        if (typeof parsed.answered === "number") state.answered = parsed.answered;
+        if (Array.isArray(parsed.order)) state.order = [...parsed.order];
+        if (parsed.choiceOrder && typeof parsed.choiceOrder === "object") state.choiceOrder = { ...parsed.choiceOrder };
+
+        if (parsed.savedQuizzes && typeof parsed.savedQuizzes === "object") {
+          writeStorageJson(STORAGE_KEYS.savedQuizzes, parsed.savedQuizzes);
+        }
+
+        if (typeof parsed.questionsHtmlInput === "string") {
+          document.getElementById("questionsHtmlInput").value = parsed.questionsHtmlInput.slice(0, MAX_HTML_INPUT_LENGTH);
+          writeStorageText(STORAGE_KEYS.questionsHtmlInput, document.getElementById("questionsHtmlInput").value);
+        }
+
+        if (typeof parsed.answerFixInput === "string") {
+          document.getElementById("answerFixInput").value = parsed.answerFixInput.slice(0, MAX_ANSWER_FIX_INPUT_LENGTH);
+          writeStorageText(STORAGE_KEYS.answerFixInput, document.getElementById("answerFixInput").value);
+        }
+
+        writeStorageText(STORAGE_KEYS.syncDataInput, raw);
+        saveProgress();
+        applyTitleStyle(state.settings.titleStyle || "classic");
+        setNightMode(state.settings.nightMode);
+        syncSettingsControls();
+        updateSavedQuizSelect();
+        updateQuizTitle();
+        render();
+        setSyncStatus("Sync code loaded.");
+      } catch {
+        setSyncStatus("Invalid sync code. Please check and try again.", true);
+      }
+    });
 
     document.getElementById("applyAnswerFixBtn").addEventListener("click", () => {
       const raw = document.getElementById("answerFixInput").value;
