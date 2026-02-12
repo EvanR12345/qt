@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Diuretics Med Chem — Interactive Quiz (Instant Feedback)</title>
+  <title>Choice Title. (Instant Feedback)</title>
   <style>
     :root {
       --bg:#fff;
@@ -36,6 +36,8 @@
     label.opt:hover{background:var(--surface-soft);}
     input[type="radio"]{margin-top:2px;}
     .feedback{margin:10px 0 6px; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-soft); display:none;}
+    .question-actions{display:flex; justify-content:flex-end; margin:4px 0 8px;}
+    .check-btn{padding:8px 10px; font-size:13px;}
     .feedback.ok{border-color:rgba(10,122,47,.35); background:rgba(10,122,47,.08); color:var(--ok);}
     .feedback.bad{border-color:rgba(176,0,32,.35); background:rgba(176,0,32,.08); color:var(--bad);}
     .explain{color:var(--text); margin-top:6px; font-size:13px; line-height:1.35;}
@@ -67,7 +69,7 @@
 </head>
 <body>
   <div class="wrap">
-    <h1 id="quizTitle">Diuretics Med Chem — Interactive Quiz</h1>
+    <h1 id="quizTitle">Choice Title.</h1>
     <p class="sub">
       This is a foramt for future pratice questions<br>
       <span id="instantFeedbackHint" class="small">Instant feedback • White background • Click an option to answer.</span>
@@ -105,7 +107,7 @@
       </label>
       <label class="setting column">
         <span>Quiz title</span>
-        <input id="titleInput" type="text" value="Diuretics Med Chem — Interactive Quiz" />
+        <input id="titleInput" type="text" value="Choice Title." />
       </label>
       <label class="setting">
         <input id="instantFeedbackToggle" type="checkbox" checked />
@@ -130,17 +132,35 @@
       </div>
       <div id="loadQuestionsSection">
         <p class="settings-title" style="margin-top:12px;">Load Questions from HTML</p>
-        <textarea id="questionsHtmlInput" placeholder="Paste HTML using this format:
-      <p class="settings-title" style="margin-top:12px;">Load Questions from HTML</p>
-      <textarea id="questionsHtmlInput" placeholder="Paste HTML using this format:
-<article data-question data-topic=&quot;chem&quot; data-answer=&quot;1&quot; data-explain=&quot;Because...&quot;>
-  <h3>Which option is correct?</h3>
+        <textarea id="questionsHtmlInput" placeholder="Paste HTML using this format:">
+<article data-question data-topic="math" data-answer="0" data-explain="Because 3 + 2 equals 5.">
+  <h3>What is 3 + 2?</h3>
   <ul>
-    <li>Option A</li>
-    <li>Option B</li>
-    <li>Option C</li>
+    <li>5</li>
+    <li>6</li>
+    <li>4</li>
+    <li>7</li>
   </ul>
-</article>"></textarea>
+</article>
+<article data-question data-topic="math" data-answer="2" data-explain="Because 7 + 3 equals 10.">
+  <h3>What is 7 + 3?</h3>
+  <ul>
+    <li>9</li>
+    <li>11</li>
+    <li>10</li>
+    <li>8</li>
+  </ul>
+</article>
+<article data-question data-topic="math" data-answer="1" data-explain="Because 9 + 4 equals 13.">
+  <h3>What is 9 + 4?</h3>
+  <ul>
+    <li>12</li>
+    <li>13</li>
+    <li>14</li>
+    <li>15</li>
+  </ul>
+</article>
+</textarea>
         <div class="settings-actions">
           <button id="loadQuestionsHtmlBtn" type="button">Load HTML Questions</button>
           <button id="copyPromptBtn" type="button">Input prompt in chat</button>
@@ -151,7 +171,7 @@
     </div>
 
     <div id="quiz"></div>
-    <p class="Any ideas to make it better is appreciated!">Notes here</p>
+    <p class="note">Any ideas to make it better is appreciated!</p>
   </div>
 
   <script>
@@ -177,7 +197,7 @@
         shuffleOnReset: false,
         compactMode: false,
         shuffleOptions: false,
-        titleText: "Diuretics Med Chem — Interactive Quiz",
+        titleText: "Choice Title.",
         instantFeedbackEnabled: true
       }
     };
@@ -360,6 +380,19 @@
         fb.className = "feedback";
         fb.id = `fb_${qid}`;
 
+        const actions = document.createElement("div");
+        actions.className = "question-actions";
+
+        const checkBtn = document.createElement("button");
+        checkBtn.type = "button";
+        checkBtn.className = "check-btn";
+        checkBtn.id = `check_${qid}`;
+        checkBtn.textContent = "Check Answer";
+        checkBtn.style.display = state.settings.instantFeedbackEnabled ? "none" : "inline-block";
+        checkBtn.disabled = !!state.locked[qid] || state.answers[qid] == null;
+        checkBtn.addEventListener("click", () => onCheckAnswer(qid));
+        actions.appendChild(checkBtn);
+
         const explain = document.createElement("div");
         explain.className = "explain";
         explain.id = `ex_${qid}`;
@@ -367,6 +400,7 @@
         qDiv.appendChild(head);
         qDiv.appendChild(prompt);
         qDiv.appendChild(opts);
+        qDiv.appendChild(actions);
         qDiv.appendChild(fb);
         qDiv.appendChild(explain);
 
@@ -384,6 +418,25 @@
       if (state.locked[qid]) return;
 
       state.answers[qid] = choiceIdx;
+      if (state.settings.instantFeedbackEnabled) {
+        gradeAnswer(qid);
+        return;
+      }
+
+      const checkBtn = document.getElementById(`check_${qid}`);
+      if (checkBtn) checkBtn.disabled = false;
+    }
+
+    function onCheckAnswer(qid) {
+      if (state.locked[qid]) return;
+      if (state.answers[qid] == null) return;
+      gradeAnswer(qid);
+    }
+
+    function gradeAnswer(qid) {
+      const choiceIdx = state.answers[qid];
+      if (choiceIdx == null || state.locked[qid]) return;
+
       state.locked[qid] = true;
       state.answered += 1;
 
@@ -393,6 +446,9 @@
       showFeedback(qid);
       updateScoreUI();
       document.querySelectorAll(`input[name="q_${qid}"]`).forEach(r => r.disabled = true);
+
+      const checkBtn = document.getElementById(`check_${qid}`);
+      if (checkBtn) checkBtn.disabled = true;
     }
 
     function showFeedback(qid) {
@@ -401,7 +457,7 @@
       const ex = document.getElementById(`ex_${qid}`);
       const chosen = state.answers[qid];
 
-      if (!state.settings.instantFeedbackEnabled) {
+      if (!state.settings.instantFeedbackEnabled && !state.locked[qid]) {
         fb.style.display = "none";
         ex.style.display = "none";
         ex.innerHTML = "";
@@ -576,7 +632,7 @@
     document.getElementById("instantFeedbackToggle").addEventListener("change", (event) => {
       state.settings.instantFeedbackEnabled = event.target.checked;
       updateQuizTitle();
-      refreshVisibleFeedback();
+      render();
     });
 
     const toggleHtmlSectionBtn = document.getElementById("toggleHtmlSectionBtn");
