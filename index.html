@@ -832,8 +832,13 @@
 
     async function copyTextToClipboard(text) {
       if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(text);
-        return true;
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch {
+          // Ignore clipboard API errors (for example, permission denied) and
+          // attempt the legacy copy fallback below.
+        }
       }
 
       const temp = document.createElement("textarea");
@@ -1554,8 +1559,8 @@
         } else {
           setSyncStatus("Sync code created. Copy it from the input box.");
         }
-      } catch {
-        setSyncStatus("Unable to create sync code.", true);
+      } catch (err) {
+        setSyncStatus(`Unable to create sync code: ${err?.message || "Unknown error"}.`, true);
       }
     });
 
@@ -1655,8 +1660,14 @@
         updateQuizTitle();
         render();
         setSyncStatus("Sync code loaded.");
-      } catch {
-        setSyncStatus("Invalid sync code. Please check and try again.", true);
+      } catch (err) {
+        const message = err?.message || "Unknown error";
+        const isInvalidCode = message === "Invalid payload" || /atob|JSON|URI malformed/i.test(message);
+        if (isInvalidCode) {
+          setSyncStatus("Invalid sync code. Please check and try again.", true);
+          return;
+        }
+        setSyncStatus(`Unable to load sync code: ${message}.`, true);
       }
     });
 
