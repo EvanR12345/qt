@@ -190,7 +190,7 @@
   </div>
 
   <script>
-    let questionsBank = [
+    const DEFAULT_QUESTIONS = [
       {
         topic: "math",
         q: "What is 3 + 2?",
@@ -213,6 +213,11 @@
         explain: "Because 9 + 4 equals 13."
       }
     ];
+
+    let questionsBank = DEFAULT_QUESTIONS.map((q) => ({
+      ...q,
+      choices: [...q.choices]
+    }));
 
     let state = {
       order: [],
@@ -249,6 +254,94 @@
       bg: "#0f172a",
       surfaceTint: "#1e293b"
     };
+    const STORAGE_KEYS = {
+      settings: "qt.quiz.settings.v1",
+      questionsHtmlInput: "qt.quiz.questionsHtmlInput.v1",
+      answerFixInput: "qt.quiz.answerFixInput.v1",
+      questionsBank: "qt.quiz.questionsBank.v1"
+    };
+
+    function readStorageJson(key) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch {
+        return null;
+      }
+    }
+
+    function writeStorageJson(key, value) {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch {
+        // Ignore storage quota/privacy mode failures.
+      }
+    }
+
+    function writeStorageText(key, value) {
+      try {
+        localStorage.setItem(key, String(value || ""));
+      } catch {
+        // Ignore storage quota/privacy mode failures.
+      }
+    }
+
+    function isValidQuestionBank(candidate) {
+      if (!Array.isArray(candidate) || !candidate.length || candidate.length > MAX_QUESTIONS) return false;
+      return candidate.every((item) => {
+        if (!item || typeof item !== "object") return false;
+        if (!Array.isArray(item.choices) || item.choices.length < 2 || item.choices.length > MAX_CHOICES_PER_QUESTION) return false;
+        if (!Number.isInteger(item.answer) || item.answer < 0 || item.answer >= item.choices.length) return false;
+        return typeof item.topic === "string" && typeof item.q === "string" && typeof item.explain === "string";
+      });
+    }
+
+    function saveSettings() {
+      writeStorageJson(STORAGE_KEYS.settings, state.settings);
+    }
+
+    function saveQuestionsBank() {
+      writeStorageJson(STORAGE_KEYS.questionsBank, questionsBank);
+    }
+
+    function hydrateFromStorage() {
+      const storedSettings = readStorageJson(STORAGE_KEYS.settings);
+      if (storedSettings && typeof storedSettings === "object") {
+        state.settings = { ...state.settings, ...storedSettings };
+      }
+
+      const storedQuestionsBank = readStorageJson(STORAGE_KEYS.questionsBank);
+      if (isValidQuestionBank(storedQuestionsBank)) {
+        questionsBank = storedQuestionsBank.map((q) => ({
+          topic: clampText(q.topic, 80),
+          q: clampText(q.q),
+          choices: q.choices.map((choice) => clampText(choice)).filter(Boolean),
+          answer: q.answer,
+          explain: clampText(q.explain)
+        }));
+      }
+
+      const htmlDraft = localStorage.getItem(STORAGE_KEYS.questionsHtmlInput);
+      if (typeof htmlDraft === "string") {
+        document.getElementById("questionsHtmlInput").value = htmlDraft.slice(0, MAX_HTML_INPUT_LENGTH);
+      }
+
+      const answerFixDraft = localStorage.getItem(STORAGE_KEYS.answerFixInput);
+      if (typeof answerFixDraft === "string") {
+        document.getElementById("answerFixInput").value = answerFixDraft.slice(0, MAX_ANSWER_FIX_INPUT_LENGTH);
+      }
+    }
+
+    function syncSettingsControls() {
+      document.getElementById("showExplanationsToggle").checked = !!state.settings.showExplanations;
+      document.getElementById("shuffleOnResetToggle").checked = !!state.settings.shuffleOnReset;
+      document.getElementById("compactModeToggle").checked = !!state.settings.compactMode;
+      document.getElementById("shuffleOptionsToggle").checked = !!state.settings.shuffleOptions;
+      document.getElementById("instantFeedbackToggle").checked = !!state.settings.instantFeedbackEnabled;
+      document.getElementById("nightModeToggle").checked = !!state.settings.nightMode;
+      document.getElementById("titleInput").value = state.settings.titleText || "Choice Title.";
+    }
 
     function setStatus(message, isError = false) {
       const status = document.getElementById("htmlLoadStatus");
@@ -423,6 +516,7 @@
       bgInput.value = theme.bg;
       tintInput.value = theme.surfaceTint;
       applyThemeColors(theme);
+      saveSettings();
     }
 
     function shuffle(array) {
@@ -713,6 +807,7 @@
       });
 
       questionsBank = parsed;
+      saveQuestionsBank();
       initOrder();
       resetAll();
     }
@@ -734,20 +829,24 @@
 
     document.getElementById("showExplanationsToggle").addEventListener("change", (event) => {
       state.settings.showExplanations = event.target.checked;
+      saveSettings();
       render();
     });
 
     document.getElementById("shuffleOnResetToggle").addEventListener("change", (event) => {
       state.settings.shuffleOnReset = event.target.checked;
+      saveSettings();
     });
 
     document.getElementById("compactModeToggle").addEventListener("change", (event) => {
       state.settings.compactMode = event.target.checked;
+      saveSettings();
       render();
     });
 
     document.getElementById("shuffleOptionsToggle").addEventListener("change", (event) => {
       state.settings.shuffleOptions = event.target.checked;
+      saveSettings();
       state.choiceOrder = {};
       render();
     });
@@ -755,11 +854,13 @@
     const titleInput = document.getElementById("titleInput");
     titleInput.addEventListener("input", (event) => {
       state.settings.titleText = event.target.value;
+      saveSettings();
       updateQuizTitle();
     });
 
     document.getElementById("instantFeedbackToggle").addEventListener("change", (event) => {
       state.settings.instantFeedbackEnabled = event.target.checked;
+      saveSettings();
       updateQuizTitle();
       render();
     });
@@ -791,6 +892,7 @@
 
     document.getElementById("nightModeToggle").addEventListener("change", (event) => {
       setNightMode(event.target.checked);
+      saveSettings();
     });
 
     document.getElementById("resetColorsBtn").addEventListener("click", () => {
@@ -798,6 +900,14 @@
       bgColorInput.value = theme.bg;
       surfaceTintInput.value = theme.surfaceTint;
       applyThemeColors(theme);
+    });
+
+    document.getElementById("questionsHtmlInput").addEventListener("input", (event) => {
+      writeStorageText(STORAGE_KEYS.questionsHtmlInput, event.target.value.slice(0, MAX_HTML_INPUT_LENGTH));
+    });
+
+    document.getElementById("answerFixInput").addEventListener("input", (event) => {
+      writeStorageText(STORAGE_KEYS.answerFixInput, event.target.value.slice(0, MAX_ANSWER_FIX_INPUT_LENGTH));
     });
 
     document.getElementById("loadQuestionsHtmlBtn").addEventListener("click", () => {
@@ -812,6 +922,7 @@
 
     document.getElementById("applyAnswerFixBtn").addEventListener("click", () => {
       const raw = document.getElementById("answerFixInput").value;
+      writeStorageText(STORAGE_KEYS.answerFixInput, raw);
       try {
         applyAnswerFixFromInput(raw);
       } catch (err) {
@@ -864,9 +975,10 @@ Format
       }
     });
 
+    hydrateFromStorage();
+    syncSettingsControls();
     initOrder();
     updateQuizTitle();
-    document.getElementById("nightModeToggle").checked = state.settings.nightMode;
     setNightMode(state.settings.nightMode);
     render();
   </script>
