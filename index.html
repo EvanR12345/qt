@@ -660,6 +660,24 @@
       status.classList.toggle("status-ok", !isError);
     }
 
+    async function copyTextToClipboard(text) {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+
+      const temp = document.createElement("textarea");
+      temp.value = text;
+      temp.setAttribute("readonly", "");
+      temp.style.position = "absolute";
+      temp.style.left = "-9999px";
+      document.body.appendChild(temp);
+      temp.select();
+      const copied = document.execCommand("copy");
+      temp.remove();
+      return copied;
+    }
+
     function parseAnswerFixInput(raw) {
       const text = String(raw || "").trim();
       if (!text) {
@@ -1292,8 +1310,7 @@
         const input = document.getElementById("syncDataInput");
         input.value = code;
         writeStorageText(STORAGE_KEYS.syncDataInput, code);
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(code);
+        if (await copyTextToClipboard(code)) {
           setSyncStatus("Sync code created and copied.");
         } else {
           setSyncStatus("Sync code created. Copy it from the input box.");
@@ -1403,16 +1420,7 @@ Format
 
     document.getElementById("copyPromptBtn").addEventListener("click", async () => {
       try {
-        if (navigator.clipboard?.writeText) {
-          await navigator.clipboard.writeText(clipboardPrompt);
-        } else {
-          const temp = document.createElement("textarea");
-          temp.value = clipboardPrompt;
-          document.body.appendChild(temp);
-          temp.select();
-          document.execCommand("copy");
-          temp.remove();
-        }
+        await copyTextToClipboard(clipboardPrompt);
         setStatus("Prompt copied to clipboard.");
         clipboardPromptPreview.style.display = "none";
       } catch (err) {
