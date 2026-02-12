@@ -15,6 +15,8 @@
       --bad:#b00020;
       --button-bg:#f7f7f7;
       --button-hover:#efefef;
+      --accent:#5b5cf0;
+      --accent-soft:rgba(91,92,240,.15);
     }
     html,body{background:var(--bg); color:var(--text); margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;}
     .wrap{max-width:980px; margin:28px auto; padding:0 16px 40px;}
@@ -22,8 +24,8 @@
     .sub{color:var(--muted); margin:0 0 18px; line-height:1.4;}
     .toolbar{display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:12px; border:1px solid var(--border); border-radius:12px; margin:16px 0 18px;}
     .toolbar > *{margin:0;}
-    button{cursor:pointer; border:1px solid var(--border); background:var(--button-bg); color:var(--text); padding:10px 12px; border-radius:10px; font-weight:600;}
-    button:hover{background:var(--button-hover);}
+    button{cursor:pointer; border:1px solid color-mix(in srgb, var(--accent) 20%, var(--border)); background:linear-gradient(145deg, color-mix(in srgb, var(--accent) 10%, var(--button-bg)), var(--button-bg)); color:var(--text); padding:10px 12px; border-radius:10px; font-weight:700; box-shadow:0 6px 14px rgba(0,0,0,.08); transition:.18s ease;}
+    button:hover{background:linear-gradient(145deg, color-mix(in srgb, var(--accent) 14%, var(--button-hover)), var(--button-hover)); transform:translateY(-1px); box-shadow:0 10px 16px rgba(0,0,0,.12);}
     .pill{padding:8px 10px; border:1px solid var(--border); border-radius:999px; background:var(--surface-soft); font-size:13px;}
     .q{border:1px solid var(--border); border-radius:14px; padding:14px 14px 10px; margin:12px 0; background:var(--surface);}
     .qhead{display:flex; gap:10px; align-items:flex-start; justify-content:space-between;}
@@ -58,6 +60,9 @@
     .setting.column span{font-weight:600;}
     .setting.column input[type="color"]{width:56px; height:32px; border:1px solid var(--border); border-radius:8px; padding:2px; background:var(--surface);}
     .setting.column input[type="text"]{width:min(520px,100%); border:1px solid var(--border); border-radius:8px; padding:8px 10px; background:var(--surface); color:var(--text); box-sizing:border-box;}
+    .title-row{display:flex; gap:10px; align-items:center; width:min(760px,100%); flex-wrap:wrap;}
+    .title-row input[type="text"]{flex:1 1 360px; min-width:220px;}
+    .title-row select{flex:1 1 220px; min-width:200px; border:1px solid var(--border); border-radius:10px; padding:9px 10px; background:var(--surface); color:var(--text); font-weight:600; box-shadow:inset 0 0 0 1px var(--accent-soft);}
     .settings-panel textarea{width:100%; min-height:150px; resize:vertical; border:1px solid var(--border); border-radius:10px; padding:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:12px; box-sizing:border-box;}
     .settings-actions{display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;}
     #clipboardPromptPreview{display:none; min-height:120px; margin-top:8px;}
@@ -106,7 +111,21 @@
       </label>
       <label class="setting column">
         <span>Quiz title</span>
-        <input id="titleInput" type="text" value="Choice Title." />
+        <div class="title-row">
+          <input id="titleInput" type="text" value="Choice Title." />
+          <select id="titleStyleSelect" aria-label="Title style preset">
+            <option value="classic">Classic Clean</option>
+            <option value="exam">Exam Prep</option>
+            <option value="flash">Flash Cards</option>
+            <option value="brain">Brain Boost</option>
+            <option value="neon">Neon Study Night</option>
+            <option value="ocean">Ocean Calm</option>
+            <option value="forest">Forest Focus</option>
+            <option value="sunset">Sunset Energy</option>
+            <option value="royal">Royal Purple</option>
+            <option value="mono">Monochrome Pro</option>
+          </select>
+        </div>
       </label>
       <label class="setting">
         <input id="instantFeedbackToggle" type="checkbox" checked />
@@ -167,6 +186,7 @@
 </textarea>
         <div class="settings-actions">
           <button id="loadQuestionsHtmlBtn" type="button">Load HTML Questions</button>
+          <button id="saveLoadedQuizBtn" type="button">Save Loaded Quiz</button>
           <button id="copyPromptBtn" type="button">Input prompt in chat</button>
           <span id="htmlLoadStatus" class="small"></span>
         </div>
@@ -225,6 +245,7 @@
       compactMode: false,
       shuffleOptions: false,
       titleText: "Choice Title.",
+      titleStyle: "classic",
       instantFeedbackEnabled: true,
       nightMode: false
     };
@@ -262,6 +283,19 @@
       answerFixInput: "qt.quiz.answerFixInput.v1",
       questionsBank: "qt.quiz.questionsBank.v1",
       progress: "qt.quiz.progress.v1"
+    };
+
+    const TITLE_STYLE_PRESETS = {
+      classic: { accent: "#5b5cf0" },
+      exam: { accent: "#2563eb" },
+      flash: { accent: "#d946ef" },
+      brain: { accent: "#f97316" },
+      neon: { accent: "#06b6d4" },
+      ocean: { accent: "#0ea5e9" },
+      forest: { accent: "#16a34a" },
+      sunset: { accent: "#ef4444" },
+      royal: { accent: "#7c3aed" },
+      mono: { accent: "#475569" }
     };
 
     function readStorageJson(key) {
@@ -426,6 +460,25 @@
       document.getElementById("instantFeedbackToggle").checked = !!state.settings.instantFeedbackEnabled;
       document.getElementById("nightModeToggle").checked = !!state.settings.nightMode;
       document.getElementById("titleInput").value = state.settings.titleText || "Choice Title.";
+      document.getElementById("titleStyleSelect").value = state.settings.titleStyle || "classic";
+    }
+
+    function applyTitleStyle(styleKey) {
+      const style = TITLE_STYLE_PRESETS[styleKey] || TITLE_STYLE_PRESETS.classic;
+      const root = document.documentElement;
+      root.style.setProperty("--accent", style.accent);
+      root.style.setProperty("--accent-soft", `${style.accent}26`);
+    }
+
+    function saveLoadedQuizSnapshot() {
+      writeStorageJson("qt.quiz.savedSnapshot.v1", {
+        titleText: state.settings.titleText,
+        titleStyle: state.settings.titleStyle,
+        questionsBank,
+        questionsHtmlInput: document.getElementById("questionsHtmlInput").value,
+        savedAt: new Date().toISOString()
+      });
+      setStatus(`Saved ${questionsBank.length} question(s) to this browser.`);
     }
 
     function setStatus(message, isError = false) {
@@ -948,6 +1001,13 @@
       updateQuizTitle();
     });
 
+    const titleStyleSelect = document.getElementById("titleStyleSelect");
+    titleStyleSelect.addEventListener("change", (event) => {
+      state.settings.titleStyle = event.target.value;
+      applyTitleStyle(state.settings.titleStyle);
+      saveSettings();
+    });
+
     document.getElementById("instantFeedbackToggle").addEventListener("change", (event) => {
       state.settings.instantFeedbackEnabled = event.target.checked;
       saveSettings();
@@ -1012,6 +1072,8 @@
       }
     });
 
+    document.getElementById("saveLoadedQuizBtn").addEventListener("click", saveLoadedQuizSnapshot);
+
     document.getElementById("applyAnswerFixBtn").addEventListener("click", () => {
       const raw = document.getElementById("answerFixInput").value;
       writeStorageText(STORAGE_KEYS.answerFixInput, raw);
@@ -1072,6 +1134,7 @@ Format
     initOrder();
     hydrateProgressFromStorage();
     updateQuizTitle();
+    applyTitleStyle(state.settings.titleStyle || "classic");
     setNightMode(state.settings.nightMode);
     render();
   </script>
