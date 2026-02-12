@@ -704,11 +704,12 @@
       }
 
       questionsBank = snapshot.questionsBank.map((q) => ({ ...q, choices: [...q.choices] }));
-      state.settings.titleText = clampText(snapshot.titleText || state.settings.titleText, 120);
+      state.settings.titleText = clampText(title || snapshot.titleText || state.settings.titleText, 120);
       state.settings.titleStyle = snapshot.titleStyle in TITLE_STYLE_PRESETS ? snapshot.titleStyle : "classic";
       document.getElementById("questionsHtmlInput").value = String(snapshot.questionsHtmlInput || "").slice(0, MAX_HTML_INPUT_LENGTH);
       writeStorageText(STORAGE_KEYS.questionsHtmlInput, document.getElementById("questionsHtmlInput").value);
       saveQuestionsBank();
+      resetAnswerFixHistoryForLoadedQuiz();
       saveSettings();
       applyTitleStyle(state.settings.titleStyle);
       updateQuizTitle();
@@ -766,6 +767,13 @@
         return;
       }
       preview.value = state.answerFixHistory.join("\n");
+    }
+
+    function resetAnswerFixHistoryForLoadedQuiz() {
+      state.answerFixHistory = [];
+      writeStorageJson(STORAGE_KEYS.answerFixHistory, state.answerFixHistory);
+      renderAnswerFixHistory();
+      setAnswerFixStatus("No fixes applied yet.");
     }
 
     async function hashPassword(password, salt) {
@@ -1298,6 +1306,7 @@
 
       questionsBank = parsed;
       saveQuestionsBank();
+      resetAnswerFixHistoryForLoadedQuiz();
       initOrder();
       resetAll();
     }
