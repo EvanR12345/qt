@@ -123,6 +123,10 @@
         <span>Cards + controls tint</span>
         <input id="surfaceTintInput" type="color" value="#fafafa" />
       </label>
+      <label class="setting">
+        <input id="nightModeToggle" type="checkbox" />
+        Enable Night mode
+      </label>
       <div class="settings-actions">
         <button id="resetColorsBtn" type="button">Reset Colours</button>
       </div>
@@ -223,6 +227,8 @@
         compactMode: false,
         shuffleOptions: false,
         titleText: "Choice Title.",
+        instantFeedbackEnabled: true,
+        nightMode: false
         instantFeedbackEnabled: true
       }
     };
@@ -238,6 +244,10 @@
     const DEFAULT_THEME = {
       bg: "#ffffff",
       surfaceTint: "#fafafa"
+    };
+    const NIGHT_THEME = {
+      bg: "#0f172a",
+      surfaceTint: "#1e293b"
     };
 
     function setStatus(message, isError = false) {
@@ -374,14 +384,28 @@
 
     function applyThemeColors({ bg, surfaceTint }) {
       const root = document.documentElement;
-      const safeBg = normalizeHexColor(bg, DEFAULT_THEME.bg);
-      const safeTint = normalizeHexColor(surfaceTint, DEFAULT_THEME.surfaceTint);
+      const fallbackTheme = state.settings.nightMode ? NIGHT_THEME : DEFAULT_THEME;
+      const safeBg = normalizeHexColor(bg, fallbackTheme.bg);
+      const safeTint = normalizeHexColor(surfaceTint, fallbackTheme.surfaceTint);
 
       root.style.setProperty("--bg", safeBg);
       root.style.setProperty("--surface", adjustColor(safeTint, 8));
       root.style.setProperty("--surface-soft", safeTint);
       root.style.setProperty("--button-bg", adjustColor(safeTint, -4));
       root.style.setProperty("--button-hover", adjustColor(safeTint, -14));
+      root.style.setProperty("--text", state.settings.nightMode ? "#e5e7eb" : "#111");
+      root.style.setProperty("--muted", state.settings.nightMode ? "#9ca3af" : "#666");
+      root.style.setProperty("--border", state.settings.nightMode ? "#334155" : "#ddd");
+    }
+
+    function setNightMode(enabled) {
+      state.settings.nightMode = enabled;
+      const theme = enabled ? NIGHT_THEME : DEFAULT_THEME;
+      const bgInput = document.getElementById("bgColorInput");
+      const tintInput = document.getElementById("surfaceTintInput");
+      bgInput.value = theme.bg;
+      tintInput.value = theme.surfaceTint;
+      applyThemeColors(theme);
     }
 
     function shuffle(array) {
@@ -748,10 +772,15 @@
       });
     });
 
+    document.getElementById("nightModeToggle").addEventListener("change", (event) => {
+      setNightMode(event.target.checked);
+    });
+
     document.getElementById("resetColorsBtn").addEventListener("click", () => {
-      bgColorInput.value = DEFAULT_THEME.bg;
-      surfaceTintInput.value = DEFAULT_THEME.surfaceTint;
-      applyThemeColors(DEFAULT_THEME);
+      const theme = state.settings.nightMode ? NIGHT_THEME : DEFAULT_THEME;
+      bgColorInput.value = theme.bg;
+      surfaceTintInput.value = theme.surfaceTint;
+      applyThemeColors(theme);
     });
 
     document.getElementById("loadQuestionsHtmlBtn").addEventListener("click", () => {
@@ -820,7 +849,8 @@ Format
 
     initOrder();
     updateQuizTitle();
-    applyThemeColors(DEFAULT_THEME);
+    document.getElementById("nightModeToggle").checked = state.settings.nightMode;
+    setNightMode(state.settings.nightMode);
     render();
   </script>
 </body>
