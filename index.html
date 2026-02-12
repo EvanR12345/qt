@@ -659,6 +659,13 @@
         select.appendChild(option);
       });
       select.value = "";
+      syncSavedQuizTitleInput("");
+    }
+
+    function syncSavedQuizTitleInput(title) {
+      const titleInput = document.getElementById("saveQuizTitleInput");
+      if (!titleInput) return;
+      titleInput.value = clampText(title || "", 80);
     }
 
     function saveLoadedQuizSnapshot() {
@@ -675,6 +682,7 @@
         titleStyle: state.settings.titleStyle,
         questionsBank,
         questionsHtmlInput: document.getElementById("questionsHtmlInput").value,
+        answerFixHistory: Array.isArray(state.answerFixHistory) ? state.answerFixHistory.slice(0, 100) : [],
         savedAt: new Date().toISOString()
       };
       writeStorageJson(STORAGE_KEYS.savedQuizzes, saved);
@@ -697,17 +705,34 @@
       }
 
       questionsBank = snapshot.questionsBank.map((q) => ({ ...q, choices: [...q.choices] }));
-      state.settings.titleText = clampText(snapshot.titleText || state.settings.titleText, 120);
+      state.settings.titleText = clampText(title || snapshot.titleText || state.settings.titleText, 120);
       state.settings.titleStyle = snapshot.titleStyle in TITLE_STYLE_PRESETS ? snapshot.titleStyle : "classic";
       document.getElementById("questionsHtmlInput").value = String(snapshot.questionsHtmlInput || "").slice(0, MAX_HTML_INPUT_LENGTH);
       writeStorageText(STORAGE_KEYS.questionsHtmlInput, document.getElementById("questionsHtmlInput").value);
       saveQuestionsBank();
+      const fallbackStoredFixHistory = readStorageJson(STORAGE_KEYS.answerFixHistory);
+      const snapshotFixHistory = Array.isArray(snapshot.answerFixHistory)
+        ? snapshot.answerFixHistory
+        : Array.isArray(snapshot.fixedQuestionsHistory)
+          ? snapshot.fixedQuestionsHistory
+          : Array.isArray(snapshot.fixHistory)
+            ? snapshot.fixHistory
+            : Array.isArray(fallbackStoredFixHistory)
+              ? fallbackStoredFixHistory
+              : [];
+      state.answerFixHistory = snapshotFixHistory
+        .filter((line) => typeof line === "string")
+        .slice(0, 100);
+      writeStorageJson(STORAGE_KEYS.answerFixHistory, state.answerFixHistory);
+      renderAnswerFixHistory();
+      setAnswerFixStatus(state.answerFixHistory.length ? "Loaded saved fixes for this quiz." : "No fixes applied yet.");
       saveSettings();
       applyTitleStyle(state.settings.titleStyle);
       updateQuizTitle();
       initOrder();
       resetAll();
       syncSettingsControls();
+      syncSavedQuizTitleInput(title);
       setStatus(`Loaded "${title}".`);
     }
 
@@ -758,6 +783,13 @@
         return;
       }
       preview.value = state.answerFixHistory.join("\n");
+    }
+
+    function resetAnswerFixHistoryForLoadedQuiz() {
+      state.answerFixHistory = [];
+      writeStorageJson(STORAGE_KEYS.answerFixHistory, state.answerFixHistory);
+      renderAnswerFixHistory();
+      setAnswerFixStatus("No fixes applied yet.");
     }
 
     async function hashPassword(password, salt) {
@@ -1290,6 +1322,7 @@
 
       questionsBank = parsed;
       saveQuestionsBank();
+      resetAnswerFixHistoryForLoadedQuiz();
       initOrder();
       resetAll();
     }
@@ -1448,6 +1481,9 @@
     document.getElementById("saveLoadedQuizBtn").addEventListener("click", saveLoadedQuizSnapshot);
     document.getElementById("loadSavedQuizBtn").addEventListener("click", loadSavedQuizSnapshot);
     document.getElementById("deleteSavedQuizBtn").addEventListener("click", deleteSavedQuizSnapshot);
+    document.getElementById("savedQuizSelect").addEventListener("change", (event) => {
+      syncSavedQuizTitleInput(event.target.value);
+    });
 
     document.getElementById("createSyncCodeBtn").addEventListener("click", async () => {
       const password = document.getElementById("syncPasswordInput").value;
