@@ -72,7 +72,7 @@
     <h1 id="quizTitle">Choice Title.</h1>
     <p class="sub">
       This is a foramt for future pratice questions<br>
-      <span id="instantFeedbackHint" class="small">Instant feedback • White background • Click an option to answer.</span>
+      <span id="instantFeedbackHint" class="small">Instant feedback • custom background • Click an option to answer.</span>
     </p>
 
     <div class="toolbar">
@@ -166,6 +166,17 @@
           <button id="copyPromptBtn" type="button">Input prompt in chat</button>
           <span id="htmlLoadStatus" class="small"></span>
         </div>
+
+        <p class="settings-title" style="margin-top:12px;">Fix Answer Key</p>
+        <label class="setting column">
+          <span>Type a correction (example: question 34 is wrong it should be c)</span>
+          <input id="answerFixInput" type="text" placeholder="question 34 is wrong it should be c" />
+        </label>
+        <div class="settings-actions">
+          <button id="applyAnswerFixBtn" type="button">Apply Answer Fix</button>
+          <span id="answerFixStatus" class="small"></span>
+        </div>
+
         <textarea id="clipboardPromptPreview" readonly aria-label="Clipboard prompt manual copy text"></textarea>
       </div>
     </div>
@@ -177,11 +188,25 @@
   <script>
     let questionsBank = [
       {
-        topic: "question",
-        q: "Question 1",
-        choices: ["A", "B", "C", "D"],
+        topic: "math",
+        q: "What is 3 + 2?",
+        choices: ["5", "6", "4", "7"],
         answer: 0,
-        explain: "Potency = dose/amount needed for a given response. Efficacy = the maximum effect."
+        explain: "Because 3 + 2 equals 5."
+      },
+      {
+        topic: "math",
+        q: "What is 7 + 3?",
+        choices: ["9", "11", "10", "8"],
+        answer: 2,
+        explain: "Because 7 + 3 equals 10."
+      },
+      {
+        topic: "math",
+        q: "What is 9 + 4?",
+        choices: ["12", "13", "14", "15"],
+        answer: 1,
+        explain: "Because 9 + 4 equals 13."
       }
     ];
 
@@ -220,6 +245,69 @@
       status.textContent = message;
       status.classList.toggle("status-error", isError);
       status.classList.toggle("status-ok", !isError);
+    }
+
+    function setAnswerFixStatus(message, isError = false) {
+      const status = document.getElementById("answerFixStatus");
+      status.textContent = message;
+      status.classList.toggle("status-error", isError);
+      status.classList.toggle("status-ok", !isError);
+    }
+
+    function parseAnswerFixInput(raw) {
+      const text = String(raw || "").trim();
+      if (!text) {
+        throw new Error("Enter a correction like: question 3 should be c");
+      }
+
+      const qMatch = text.match(/question\s*(\d+)/i);
+      if (!qMatch) {
+        throw new Error("Could not find question number. Include 'question N'.");
+      }
+
+      let answerToken = null;
+      const shouldBeMatch = text.match(/should\s*be\s*([a-z]|\d+)/i);
+      if (shouldBeMatch) {
+        answerToken = shouldBeMatch[1];
+      } else {
+        const tail = text.match(/\b([a-z]|\d+)\b\s*$/i);
+        if (tail) answerToken = tail[1];
+      }
+
+      if (!answerToken) {
+        throw new Error("Could not find corrected answer. Use a letter (A/B/C...) or index.");
+      }
+
+      return {
+        questionNumber: Number(qMatch[1]),
+        answerToken: answerToken.toLowerCase()
+      };
+    }
+
+    function applyAnswerFixFromInput(raw) {
+      const { questionNumber, answerToken } = parseAnswerFixInput(raw);
+      if (!Number.isInteger(questionNumber) || questionNumber < 1 || questionNumber > state.order.length) {
+        throw new Error(`Question number must be between 1 and ${state.order.length}.`);
+      }
+
+      const qid = state.order[questionNumber - 1];
+      const item = questionsBank[qid];
+      let answerIdx;
+
+      if (/^\d+$/.test(answerToken)) {
+        answerIdx = Number(answerToken);
+      } else {
+        answerIdx = answerToken.charCodeAt(0) - 97;
+      }
+
+      if (!Number.isInteger(answerIdx) || answerIdx < 0 || answerIdx >= item.choices.length) {
+        throw new Error(`Answer must be within A-${String.fromCharCode(64 + item.choices.length)} for question ${questionNumber}.`);
+      }
+
+      item.answer = answerIdx;
+      resetAll();
+      const answerLetter = String.fromCharCode(65 + answerIdx);
+      setAnswerFixStatus(`Updated question ${questionNumber} answer to ${answerLetter}. Answers were reset.`);
     }
 
     function clampText(text, maxLen = MAX_TEXT_LENGTH) {
@@ -673,6 +761,15 @@
         setStatus(`Loaded ${questionsBank.length} question(s).`);
       } catch (err) {
         setStatus(`Unable to load HTML: ${err.message}`, true);
+      }
+    });
+
+    document.getElementById("applyAnswerFixBtn").addEventListener("click", () => {
+      const raw = document.getElementById("answerFixInput").value;
+      try {
+        applyAnswerFixFromInput(raw);
+      } catch (err) {
+        setAnswerFixStatus(`Unable to apply fix: ${err.message}`, true);
       }
     });
 
