@@ -710,6 +710,22 @@
       document.getElementById("questionsHtmlInput").value = String(snapshot.questionsHtmlInput || "").slice(0, MAX_HTML_INPUT_LENGTH);
       writeStorageText(STORAGE_KEYS.questionsHtmlInput, document.getElementById("questionsHtmlInput").value);
       saveQuestionsBank();
+      const fallbackStoredFixHistory = readStorageJson(STORAGE_KEYS.answerFixHistory);
+      const snapshotFixHistory = Array.isArray(snapshot.answerFixHistory)
+        ? snapshot.answerFixHistory
+        : Array.isArray(snapshot.fixedQuestionsHistory)
+          ? snapshot.fixedQuestionsHistory
+          : Array.isArray(snapshot.fixHistory)
+            ? snapshot.fixHistory
+            : Array.isArray(fallbackStoredFixHistory)
+              ? fallbackStoredFixHistory
+              : [];
+      state.answerFixHistory = snapshotFixHistory
+        .filter((line) => typeof line === "string")
+        .slice(0, 100);
+      writeStorageJson(STORAGE_KEYS.answerFixHistory, state.answerFixHistory);
+      renderAnswerFixHistory();
+      setAnswerFixStatus(state.answerFixHistory.length ? "Loaded saved fixes for this quiz." : "No fixes applied yet.");
       state.answerFixHistory = Array.isArray(snapshot.answerFixHistory)
         ? snapshot.answerFixHistory.filter((line) => typeof line === "string").slice(0, 100)
         : [];
