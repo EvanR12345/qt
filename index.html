@@ -24,8 +24,10 @@
     .sub{color:var(--muted); margin:0 0 18px; line-height:1.4;}
     .toolbar{display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:12px; border:1px solid var(--border); border-radius:12px; margin:16px 0 18px;}
     .toolbar > *{margin:0;}
-    button{cursor:pointer; border:1px solid color-mix(in srgb, var(--accent) 20%, var(--border)); background:linear-gradient(145deg, color-mix(in srgb, var(--accent) 10%, var(--button-bg)), var(--button-bg)); color:var(--text); padding:10px 12px; border-radius:10px; font-weight:700; box-shadow:0 6px 14px rgba(0,0,0,.08); transition:.18s ease;}
-    button:hover{background:linear-gradient(145deg, color-mix(in srgb, var(--accent) 14%, var(--button-hover)), var(--button-hover)); transform:translateY(-1px); box-shadow:0 10px 16px rgba(0,0,0,.12);}
+    button{cursor:pointer; border:1px solid var(--border); background:var(--button-bg); color:var(--text); padding:10px 12px; border-radius:10px; font-weight:700; box-shadow:none; transition:.18s ease;}
+    button:hover{background:var(--button-hover); transform:none; box-shadow:none;}
+    body.fancy-ui button{border:1px solid color-mix(in srgb, var(--accent) 20%, var(--border)); background:linear-gradient(145deg, color-mix(in srgb, var(--accent) 10%, var(--button-bg)), var(--button-bg)); box-shadow:0 6px 14px rgba(0,0,0,.08);}
+    body.fancy-ui button:hover{background:linear-gradient(145deg, color-mix(in srgb, var(--accent) 14%, var(--button-hover)), var(--button-hover)); transform:translateY(-1px); box-shadow:0 10px 16px rgba(0,0,0,.12);}
     .pill{padding:8px 10px; border:1px solid var(--border); border-radius:999px; background:var(--surface-soft); font-size:13px;}
     .q{border:1px solid var(--border); border-radius:14px; padding:14px 14px 10px; margin:12px 0; background:var(--surface);}
     .qhead{display:flex; gap:10px; align-items:flex-start; justify-content:space-between;}
@@ -33,8 +35,10 @@
     .tag{font-size:12px; color:var(--muted); border:1px solid var(--border); padding:4px 8px; border-radius:999px; white-space:nowrap;}
     .prompt{margin:10px 0 12px; line-height:1.4;}
     .opts{display:grid; gap:8px; margin:0 0 10px;}
-    label.opt{display:flex; gap:10px; align-items:flex-start; border:1px solid var(--border); border-radius:12px; padding:10px; cursor:pointer;}
+    label.opt{display:flex; gap:10px; align-items:flex-start; border:1px solid var(--border); border-radius:12px; padding:10px; cursor:pointer; background:var(--surface); transition:.18s ease;}
     label.opt:hover{background:var(--surface-soft);}
+    body.fancy-ui label.opt{border:1px solid color-mix(in srgb, var(--accent) 26%, var(--border)); background:linear-gradient(145deg, color-mix(in srgb, var(--accent) 7%, var(--surface)), var(--surface)); box-shadow:0 4px 12px rgba(0,0,0,.08);}
+    body.fancy-ui label.opt:hover{background:linear-gradient(145deg, color-mix(in srgb, var(--accent) 12%, var(--surface-soft)), var(--surface-soft)); transform:translateY(-1px);}
     input[type="radio"]{margin-top:2px;}
     .feedback{margin:10px 0 6px; padding:10px 12px; border-radius:12px; border:1px solid var(--border); background:var(--surface-soft); display:none;}
     .question-actions{display:flex; justify-content:flex-end; margin:4px 0 8px;}
@@ -65,6 +69,10 @@
     .title-row select{flex:1 1 220px; min-width:200px; border:1px solid var(--border); border-radius:10px; padding:9px 10px; background:var(--surface); color:var(--text); font-weight:600; box-shadow:inset 0 0 0 1px var(--accent-soft);}
     .settings-panel textarea{width:100%; min-height:150px; resize:vertical; border:1px solid var(--border); border-radius:10px; padding:10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; font-size:12px; box-sizing:border-box;}
     .settings-actions{display:flex; gap:8px; align-items:center; margin-top:8px; flex-wrap:wrap;}
+    #clearSavedDataBtn{background:#dc2626; border-color:#b91c1c; color:#fff;}
+    #clearSavedDataBtn:hover{background:#b91c1c;}
+    body.fancy-ui #clearSavedDataBtn{background:linear-gradient(145deg,#ef4444,#dc2626); border-color:#7f1d1d; color:#fff;}
+    body.fancy-ui #clearSavedDataBtn:hover{background:linear-gradient(145deg,#dc2626,#b91c1c);}
     #clipboardPromptPreview{display:none; min-height:120px; margin-top:8px;}
     .compact .q{padding:10px 10px 8px; margin:8px 0;}
     .compact .prompt{margin:6px 0 8px;}
@@ -76,7 +84,7 @@
     <h1 id="quizTitle">Choice Title.</h1>
     <p class="sub">
       This is a foramt for future pratice questions<br>
-      <span id="instantFeedbackHint" class="small">Instant feedback • custom background • Click an option to answer.</span>
+      <span id="instantFeedbackHint" class="small">Instant Feedback • Custom Background • Click an option to answer.</span>
     </p>
 
     <div class="toolbar">
@@ -131,6 +139,10 @@
         <input id="instantFeedbackToggle" type="checkbox" checked />
         Enable Instant Feedback
       </label>
+      <label class="setting">
+        <input id="fancyButtonsToggle" type="checkbox" />
+        Fancy buttons + option cards
+      </label>
 
       <p class="settings-title" style="margin-top:12px;">Colour Theme</p>
       <label class="setting column">
@@ -146,7 +158,7 @@
         Enable Night mode
       </label>
       <div class="settings-actions">
-        <button id="resetColorsBtn" type="button">Reset Colours</button>
+        <button id="restoreDefaultColorsBtn" type="button">Restore Default Colours</button>
         <button id="clearSavedDataBtn" type="button">Clear Saved Data</button>
       </div>
 
@@ -156,7 +168,7 @@
       <div id="loadQuestionsSection">
         <p class="settings-title" style="margin-top:12px;">Load Questions from HTML</p>
         <textarea id="questionsHtmlInput" placeholder="Paste HTML using this format:">
-<article data-question data-topic="math" data-answer="0" data-explain="Because 3 + 2 equals 5.">
+<article data-question data-topic="Math" data-answer="0" data-explain="Because 3 + 2 equals 5.">
   <h3>What is 3 + 2?</h3>
   <ul>
     <li>5</li>
@@ -165,7 +177,7 @@
     <li>7</li>
   </ul>
 </article>
-<article data-question data-topic="math" data-answer="2" data-explain="Because 7 + 3 equals 10.">
+<article data-question data-topic="Math" data-answer="2" data-explain="Because 7 + 3 equals 10.">
   <h3>What is 7 + 3?</h3>
   <ul>
     <li>9</li>
@@ -174,7 +186,7 @@
     <li>8</li>
   </ul>
 </article>
-<article data-question data-topic="math" data-answer="1" data-explain="Because 9 + 4 equals 13.">
+<article data-question data-topic="Math" data-answer="1" data-explain="Because 9 + 4 equals 13.">
   <h3>What is 9 + 4?</h3>
   <ul>
     <li>12</li>
@@ -189,6 +201,17 @@
           <button id="saveLoadedQuizBtn" type="button">Save Loaded Quiz</button>
           <button id="copyPromptBtn" type="button">Input prompt in chat</button>
           <span id="htmlLoadStatus" class="small"></span>
+        </div>
+        <label class="setting column">
+          <span>Saved quiz title</span>
+          <div class="title-row">
+            <input id="saveQuizTitleInput" type="text" maxlength="80" placeholder="Example: Algebra Set 1" />
+            <select id="savedQuizSelect" aria-label="Saved quizzes"></select>
+          </div>
+        </label>
+        <div class="settings-actions">
+          <button id="loadSavedQuizBtn" type="button">Load Saved Quiz</button>
+          <button id="deleteSavedQuizBtn" type="button">Delete Saved Quiz</button>
         </div>
 
         <p class="settings-title" style="margin-top:12px;">Fix Answer Key</p>
@@ -212,21 +235,21 @@
   <script>
     const DEFAULT_QUESTIONS = [
       {
-        topic: "math",
+        topic: "Math",
         q: "What is 3 + 2?",
         choices: ["5", "6", "4", "7"],
         answer: 0,
         explain: "Because 3 + 2 equals 5."
       },
       {
-        topic: "math",
+        topic: "Math",
         q: "What is 7 + 3?",
         choices: ["9", "11", "10", "8"],
         answer: 2,
         explain: "Because 7 + 3 equals 10."
       },
       {
-        topic: "math",
+        topic: "Math",
         q: "What is 9 + 4?",
         choices: ["12", "13", "14", "15"],
         answer: 1,
@@ -247,7 +270,10 @@
       titleText: "Choice Title.",
       titleStyle: "classic",
       instantFeedbackEnabled: true,
-      nightMode: false
+      fancyButtons: false,
+      nightMode: false,
+      dayTheme: { bg: "#ffffff", surfaceTint: "#fafafa" },
+      nightTheme: { bg: "#0f172a", surfaceTint: "#1e293b" }
     };
 
     let state = {
@@ -282,7 +308,8 @@
       questionsHtmlInput: "qt.quiz.questionsHtmlInput.v1",
       answerFixInput: "qt.quiz.answerFixInput.v1",
       questionsBank: "qt.quiz.questionsBank.v1",
-      progress: "qt.quiz.progress.v1"
+      progress: "qt.quiz.progress.v1",
+      savedQuizzes: "qt.quiz.savedQuizzes.v1"
     };
 
     const TITLE_STYLE_PRESETS = {
@@ -393,11 +420,19 @@
       if (storedSettings && typeof storedSettings === "object") {
         state.settings = { ...state.settings, ...storedSettings };
       }
+      state.settings.dayTheme = {
+        bg: normalizeHexColor(state.settings.dayTheme?.bg, DEFAULT_THEME.bg),
+        surfaceTint: normalizeHexColor(state.settings.dayTheme?.surfaceTint, DEFAULT_THEME.surfaceTint)
+      };
+      state.settings.nightTheme = {
+        bg: normalizeHexColor(state.settings.nightTheme?.bg, NIGHT_THEME.bg),
+        surfaceTint: normalizeHexColor(state.settings.nightTheme?.surfaceTint, NIGHT_THEME.surfaceTint)
+      };
 
       const storedQuestionsBank = readStorageJson(STORAGE_KEYS.questionsBank);
       if (isValidQuestionBank(storedQuestionsBank)) {
         questionsBank = storedQuestionsBank.map((q) => ({
-          topic: clampText(q.topic, 80),
+          topic: formatTopicLabel(q.topic),
           q: clampText(q.q),
           choices: q.choices.map((choice) => clampText(choice)).filter(Boolean),
           answer: q.answer,
@@ -427,11 +462,30 @@
       state.choiceOrder = { ...storedProgress.choiceOrder };
     }
 
-    function clearSavedData() {
-      const ok = window.confirm("Confirm resetting all website data? This clears saved settings, drafts, custom questions, and progress.");
+    async function clearSavedData() {
+      const ok = window.confirm("Confirm resetting all website data? This clears saved settings, drafts, custom questions, progress, and local browser cache for this page.");
       if (!ok) return;
 
       Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
+      sessionStorage.clear();
+
+      try {
+        if (window.caches && caches.keys) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map((key) => caches.delete(key)));
+        }
+      } catch {
+        // Ignore cache API limitations in restricted contexts.
+      }
+
+      try {
+        if (navigator.serviceWorker?.getRegistrations) {
+          const regs = await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map((reg) => reg.unregister()));
+        }
+      } catch {
+        // Ignore service worker API limitations in restricted contexts.
+      }
 
       questionsBank = DEFAULT_QUESTIONS.map((q) => ({ ...q, choices: [...q.choices] }));
       state.settings = { ...DEFAULT_SETTINGS };
@@ -445,11 +499,14 @@
       syncSettingsControls();
       document.getElementById("questionsHtmlInput").value = "";
       document.getElementById("answerFixInput").value = "";
+      document.getElementById("saveQuizTitleInput").value = "";
+      updateSavedQuizSelect();
       setStatus("Saved website data cleared.");
       setAnswerFixStatus("Saved answer-fix data cleared.");
       updateQuizTitle();
       setNightMode(state.settings.nightMode);
       render();
+      window.location.reload();
     }
 
     function syncSettingsControls() {
@@ -458,6 +515,7 @@
       document.getElementById("compactModeToggle").checked = !!state.settings.compactMode;
       document.getElementById("shuffleOptionsToggle").checked = !!state.settings.shuffleOptions;
       document.getElementById("instantFeedbackToggle").checked = !!state.settings.instantFeedbackEnabled;
+      document.getElementById("fancyButtonsToggle").checked = !!state.settings.fancyButtons;
       document.getElementById("nightModeToggle").checked = !!state.settings.nightMode;
       document.getElementById("titleInput").value = state.settings.titleText || "Choice Title.";
       document.getElementById("titleStyleSelect").value = state.settings.titleStyle || "classic";
@@ -470,15 +528,97 @@
       root.style.setProperty("--accent-soft", `${style.accent}26`);
     }
 
+    function getSavedQuizzes() {
+      const saved = readStorageJson(STORAGE_KEYS.savedQuizzes);
+      if (!saved || typeof saved !== "object") return {};
+      return saved;
+    }
+
+    function updateSavedQuizSelect() {
+      const select = document.getElementById("savedQuizSelect");
+      if (!select) return;
+      const saved = getSavedQuizzes();
+      const titles = Object.keys(saved).sort((a, b) => a.localeCompare(b));
+      select.innerHTML = "";
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = titles.length ? "Select saved quiz" : "No saved quizzes";
+      select.appendChild(placeholder);
+      titles.forEach((title) => {
+        const option = document.createElement("option");
+        option.value = title;
+        option.textContent = title;
+        select.appendChild(option);
+      });
+      select.value = "";
+    }
+
     function saveLoadedQuizSnapshot() {
-      writeStorageJson("qt.quiz.savedSnapshot.v1", {
+      const titleInput = document.getElementById("saveQuizTitleInput");
+      const title = clampText(titleInput?.value || "", 80);
+      if (!title) {
+        setStatus("Enter a saved quiz title first.", true);
+        return;
+      }
+
+      const saved = getSavedQuizzes();
+      saved[title] = {
         titleText: state.settings.titleText,
         titleStyle: state.settings.titleStyle,
         questionsBank,
         questionsHtmlInput: document.getElementById("questionsHtmlInput").value,
         savedAt: new Date().toISOString()
-      });
-      setStatus(`Saved ${questionsBank.length} question(s) to this browser.`);
+      };
+      writeStorageJson(STORAGE_KEYS.savedQuizzes, saved);
+      updateSavedQuizSelect();
+      setStatus(`Saved "${title}" with ${questionsBank.length} question(s).`);
+    }
+
+    function loadSavedQuizSnapshot() {
+      const select = document.getElementById("savedQuizSelect");
+      const title = select.value;
+      if (!title) {
+        setStatus("Select a saved quiz to load.", true);
+        return;
+      }
+      const saved = getSavedQuizzes();
+      const snapshot = saved[title];
+      if (!snapshot || !isValidQuestionBank(snapshot.questionsBank)) {
+        setStatus("Saved quiz is invalid or missing.", true);
+        return;
+      }
+
+      questionsBank = snapshot.questionsBank.map((q) => ({ ...q, choices: [...q.choices] }));
+      state.settings.titleText = clampText(snapshot.titleText || state.settings.titleText, 120);
+      state.settings.titleStyle = snapshot.titleStyle in TITLE_STYLE_PRESETS ? snapshot.titleStyle : "classic";
+      document.getElementById("questionsHtmlInput").value = String(snapshot.questionsHtmlInput || "").slice(0, MAX_HTML_INPUT_LENGTH);
+      writeStorageText(STORAGE_KEYS.questionsHtmlInput, document.getElementById("questionsHtmlInput").value);
+      saveQuestionsBank();
+      saveSettings();
+      applyTitleStyle(state.settings.titleStyle);
+      updateQuizTitle();
+      initOrder();
+      resetAll();
+      syncSettingsControls();
+      setStatus(`Loaded "${title}".`);
+    }
+
+    function deleteSavedQuizSnapshot() {
+      const select = document.getElementById("savedQuizSelect");
+      const title = select.value;
+      if (!title) {
+        setStatus("Select a saved quiz to delete.", true);
+        return;
+      }
+      const saved = getSavedQuizzes();
+      if (!saved[title]) {
+        setStatus("Saved quiz was not found.", true);
+        return;
+      }
+      delete saved[title];
+      writeStorageJson(STORAGE_KEYS.savedQuizzes, saved);
+      updateSavedQuizSelect();
+      setStatus(`Deleted saved quiz "${title}".`);
     }
 
     function setStatus(message, isError = false) {
@@ -575,6 +715,12 @@
       return clean.length > maxLen ? `${clean.slice(0, maxLen)}…` : clean;
     }
 
+    function formatTopicLabel(topic) {
+      const clean = clampText(topic || "General", 80);
+      if (!clean) return "General";
+      return clean.charAt(0).toUpperCase() + clean.slice(1);
+    }
+
     function validateSafeHtmlTree(root) {
       const all = root.querySelectorAll("*");
       all.forEach((el) => {
@@ -648,14 +794,34 @@
       root.style.setProperty("--border", state.settings.nightMode ? "#334155" : "#ddd");
     }
 
+    function getThemeForMode(enabled) {
+      return enabled ? state.settings.nightTheme : state.settings.dayTheme;
+    }
+
     function setNightMode(enabled) {
       state.settings.nightMode = enabled;
-      const theme = enabled ? NIGHT_THEME : DEFAULT_THEME;
+      const theme = getThemeForMode(enabled);
       const bgInput = document.getElementById("bgColorInput");
       const tintInput = document.getElementById("surfaceTintInput");
       bgInput.value = theme.bg;
       tintInput.value = theme.surfaceTint;
       applyThemeColors(theme);
+      saveSettings();
+    }
+
+    function updateThemeFromInputs() {
+      const bgInput = document.getElementById("bgColorInput");
+      const tintInput = document.getElementById("surfaceTintInput");
+      const nextTheme = {
+        bg: normalizeHexColor(bgInput.value, state.settings.nightMode ? NIGHT_THEME.bg : DEFAULT_THEME.bg),
+        surfaceTint: normalizeHexColor(tintInput.value, state.settings.nightMode ? NIGHT_THEME.surfaceTint : DEFAULT_THEME.surfaceTint)
+      };
+      if (state.settings.nightMode) {
+        state.settings.nightTheme = nextTheme;
+      } else {
+        state.settings.dayTheme = nextTheme;
+      }
+      applyThemeColors(nextTheme);
       saveSettings();
     }
 
@@ -705,7 +871,7 @@
 
         const tag = document.createElement("span");
         tag.className = "tag";
-        tag.textContent = item.topic;
+        tag.textContent = formatTopicLabel(item.topic);
 
         head.appendChild(left);
         head.appendChild(tag);
@@ -772,6 +938,7 @@
 
       updateScoreUI();
       document.body.classList.toggle("compact", state.settings.compactMode);
+      document.body.classList.toggle("fancy-ui", state.settings.fancyButtons);
       for (const qidStr of Object.keys(state.locked)) {
         showFeedback(Number(qidStr));
       }
@@ -873,7 +1040,6 @@
       state.choiceOrder = {};
       saveProgress();
       render();
-      window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
     function escapeHtml(s) {
@@ -925,7 +1091,7 @@
       }
 
       const parsed = blocks.map((block, idx) => {
-        const topic = clampText(block.getAttribute("data-topic") || "custom", 80);
+        const topic = formatTopicLabel(block.getAttribute("data-topic") || "custom");
         const answer = Number(block.getAttribute("data-answer"));
         const explain = clampText(block.getAttribute("data-explain") || "No explanation provided.");
 
@@ -1015,6 +1181,12 @@
       render();
     });
 
+    document.getElementById("fancyButtonsToggle").addEventListener("change", (event) => {
+      state.settings.fancyButtons = event.target.checked;
+      saveSettings();
+      render();
+    });
+
     const toggleHtmlSectionBtn = document.getElementById("toggleHtmlSectionBtn");
     const loadQuestionsSection = document.getElementById("loadQuestionsSection");
     toggleHtmlSectionBtn.addEventListener("click", () => {
@@ -1026,30 +1198,24 @@
 
     const bgColorInput = document.getElementById("bgColorInput");
     const surfaceTintInput = document.getElementById("surfaceTintInput");
-    bgColorInput.addEventListener("input", () => {
-      applyThemeColors({
-        bg: bgColorInput.value,
-        surfaceTint: surfaceTintInput.value
-      });
-    });
+    bgColorInput.addEventListener("input", updateThemeFromInputs);
 
-    surfaceTintInput.addEventListener("input", () => {
-      applyThemeColors({
-        bg: bgColorInput.value,
-        surfaceTint: surfaceTintInput.value
-      });
-    });
+    surfaceTintInput.addEventListener("input", updateThemeFromInputs);
 
     document.getElementById("nightModeToggle").addEventListener("change", (event) => {
       setNightMode(event.target.checked);
       saveSettings();
     });
 
-    document.getElementById("resetColorsBtn").addEventListener("click", () => {
-      const theme = state.settings.nightMode ? NIGHT_THEME : DEFAULT_THEME;
-      bgColorInput.value = theme.bg;
-      surfaceTintInput.value = theme.surfaceTint;
-      applyThemeColors(theme);
+    document.getElementById("restoreDefaultColorsBtn").addEventListener("click", () => {
+      state.settings.dayTheme = { ...DEFAULT_THEME };
+      state.settings.nightTheme = { ...NIGHT_THEME };
+      state.settings.nightMode = false;
+      document.getElementById("nightModeToggle").checked = false;
+      bgColorInput.value = DEFAULT_THEME.bg;
+      surfaceTintInput.value = DEFAULT_THEME.surfaceTint;
+      applyThemeColors(DEFAULT_THEME);
+      saveSettings();
     });
 
     document.getElementById("clearSavedDataBtn").addEventListener("click", clearSavedData);
@@ -1073,6 +1239,8 @@
     });
 
     document.getElementById("saveLoadedQuizBtn").addEventListener("click", saveLoadedQuizSnapshot);
+    document.getElementById("loadSavedQuizBtn").addEventListener("click", loadSavedQuizSnapshot);
+    document.getElementById("deleteSavedQuizBtn").addEventListener("click", deleteSavedQuizSnapshot);
 
     document.getElementById("applyAnswerFixBtn").addEventListener("click", () => {
       const raw = document.getElementById("answerFixInput").value;
@@ -1135,6 +1303,7 @@ Format
     hydrateProgressFromStorage();
     updateQuizTitle();
     applyTitleStyle(state.settings.titleStyle || "classic");
+    updateSavedQuizSelect();
     setNightMode(state.settings.nightMode);
     render();
   </script>
