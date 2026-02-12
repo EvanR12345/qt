@@ -659,6 +659,13 @@
         select.appendChild(option);
       });
       select.value = "";
+      syncSavedQuizTitleInput("");
+    }
+
+    function syncSavedQuizTitleInput(title) {
+      const titleInput = document.getElementById("saveQuizTitleInput");
+      if (!titleInput) return;
+      titleInput.value = clampText(title || "", 80);
     }
 
     function saveLoadedQuizSnapshot() {
@@ -708,6 +715,7 @@
       initOrder();
       resetAll();
       syncSettingsControls();
+      syncSavedQuizTitleInput(title);
       setStatus(`Loaded "${title}".`);
     }
 
@@ -1448,6 +1456,9 @@
     document.getElementById("saveLoadedQuizBtn").addEventListener("click", saveLoadedQuizSnapshot);
     document.getElementById("loadSavedQuizBtn").addEventListener("click", loadSavedQuizSnapshot);
     document.getElementById("deleteSavedQuizBtn").addEventListener("click", deleteSavedQuizSnapshot);
+    document.getElementById("savedQuizSelect").addEventListener("change", (event) => {
+      syncSavedQuizTitleInput(event.target.value);
+    });
 
     document.getElementById("createSyncCodeBtn").addEventListener("click", async () => {
       const password = document.getElementById("syncPasswordInput").value;
